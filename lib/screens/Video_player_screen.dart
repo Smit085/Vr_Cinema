@@ -44,8 +44,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   @override
   void initState() {
     super.initState();
-    currentVideoPath = widget.videoPaths[_currentIndex];
     _currentIndex = widget.initialIndex;
+    currentVideoPath = widget.videoPaths[_currentIndex];
     _vlcPlayerController =
         VlcPlayerController.file(File(currentVideoPath));
     print(currentVideoPath);
