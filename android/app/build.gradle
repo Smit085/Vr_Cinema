@@ -9,7 +9,6 @@ plugins {
 android {
     namespace = "com.example.vr_cinema"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8

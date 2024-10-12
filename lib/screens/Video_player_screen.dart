@@ -461,7 +461,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => VrCinemaScreen(videoPath: currentVideoPath),
+                              builder: (context) => VrCinemaScreen(videoPath: currentVideoPath, initialScene: 'VR_Room',),
                             ),
                           );
                           print("Watch In VR Tapped");
@@ -475,7 +475,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => VrCinemaScreen(videoPath: currentVideoPath),
+                              builder: (context) => VrCinemaScreen(videoPath: currentVideoPath, initialScene: 'VR_Livingroom',),
                             ),
                           );
                           print("Watch In VR Tapped");
