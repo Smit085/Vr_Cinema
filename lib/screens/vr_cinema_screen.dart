@@ -61,7 +61,7 @@ class _VrCinemaScreenState extends State<VrCinemaScreen> {
                 onUnityMessage: (message) {
                   print("Received message from Unity: $message");
                   if (message == "SceneReady") {
-                    _loadScene(widget.initialScene,widget.videoPath);
+                    _loadScene(widget.initialScene, widget.videoPath);
                   }
                   if (message == "ScreenReady") {
                     setState(() {

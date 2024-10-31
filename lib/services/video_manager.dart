@@ -124,11 +124,11 @@ class VideoManager {
     }
 
     directories.addAll([
-      // Directory('/storage/emulated/0/Android/Media'),
-      // Directory('/storage/emulated/0/DCIM'),
+      Directory('/storage/emulated/0/Android/Media'),
+      Directory('/storage/emulated/0/DCIM'),
       Directory('/storage/emulated/0/Movies'),
       Directory('/storage/emulated/0/Download'),
-      // Directory('/storage/emulated/0/Pictures'),
+      Directory('/storage/emulated/0/Pictures'),
     ]);
     return directories;
   }

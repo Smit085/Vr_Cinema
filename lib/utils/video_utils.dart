@@ -11,8 +11,9 @@ String formatDuration(int durationMillis) {
 
 String formatResolution(int? height, int? width) {
   if (height == null || width == null) return 'Unknown';
+  if (height >= 4320) return '8K';
   if (height >= 2160) return '4K';
-  if (height >= 1440) return '1440p';
+  if (height >= 1440) return '2K';
   if (height >= 1080) return '1080p';
   if (height >= 720) return '720p';
   if (height >= 480) return '480p';
