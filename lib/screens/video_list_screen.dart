@@ -208,11 +208,10 @@ class _VideoListScreenState extends State<VideoListScreen> {
 
       // Maps for grouped and single videos
       final Map<String, List<Map<String, dynamic>>> groupedVideos = {};
-      const int minMatchThreshold = 8; // or any desired maximum threshold
+      const int minMatchThreshold = 4;
 
       for (var video in videos) {
         final videoName = video['file'].path.split('/').last;
-        num adjustedThreshold = minMatchThreshold.clamp(0, videoName.length);
         String bestMatchingPrefix = '';
         int bestMatchLength = 0;
 
@@ -220,14 +219,14 @@ class _VideoListScreenState extends State<VideoListScreen> {
           int matchLength = _calculatePrefixMatchLength(prefix, videoName);
 
           if (matchLength > bestMatchLength &&
-              matchLength >= adjustedThreshold) {
+              matchLength >= minMatchThreshold) {
             bestMatchingPrefix = prefix;
             bestMatchLength = matchLength;
           }
         }
 
         if (bestMatchingPrefix.isEmpty) {
-          bestMatchingPrefix = videoName.substring(0, adjustedThreshold);
+          bestMatchingPrefix = videoName.substring(0, minMatchThreshold);
         }
 
         groupedVideos.putIfAbsent(bestMatchingPrefix, () => []).add(video);
@@ -252,7 +251,6 @@ class _VideoListScreenState extends State<VideoListScreen> {
 
 // Helper function to calculate the longest matching prefix length between two strings
   int _calculatePrefixMatchLength(String s1, String s2) {
-    // Limit match length to the length of the shorter string
     int minLength = s1.length < s2.length ? s1.length : s2.length;
     int matchLength = 0;
 
