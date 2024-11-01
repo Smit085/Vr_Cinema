@@ -15,6 +15,7 @@ class VideoListScreen extends StatefulWidget {
 class _VideoListScreenState extends State<VideoListScreen> {
   List<Map<String, dynamic>> videos = [];
   List<Map<String, dynamic>> filteredVideos = [];
+  List<Map<String, dynamic>> singleVideos = [];
   bool isLoading = true;
   bool isBackgroundLoading = false;
   bool isSearching = false;
@@ -205,59 +206,65 @@ class _VideoListScreenState extends State<VideoListScreen> {
     setState(() {
       isGroupedView = true;
 
+      // Maps for grouped and single videos
       final Map<String, List<Map<String, dynamic>>> groupedVideos = {};
+      const int minMatchThreshold = 8; // or any desired maximum threshold
 
       for (var video in videos) {
-        String? videoName = video['file']?.path?.split('/').last;
-        print("Video Name: $videoName");
+        final videoName = video['file'].path.split('/').last;
+        num adjustedThreshold = minMatchThreshold.clamp(0, videoName.length);
+        String bestMatchingPrefix = '';
+        int bestMatchLength = 0;
 
-        if (videoName == null || videoName.isEmpty) {
-          print("Skipping video with null or empty name");
-          continue;
-        }
-
-        String lowerCaseName = videoName.toLowerCase();
-        print("Lower Case Name: $lowerCaseName");
-
-        // ... rest of the function ...
-        String matchingPrefix = '';
         for (var prefix in groupedVideos.keys) {
-          int minLength = prefix.length < lowerCaseName.length
-              ? prefix.length
-              : lowerCaseName.length;
-          int matchLength = 0;
+          int matchLength = _calculatePrefixMatchLength(prefix, videoName);
 
-          for (int i = 0; i < minLength; i++) {
-            if (prefix[i] == lowerCaseName[i]) {
-              matchLength++;
-            } else {
-              break;
-            }
+          if (matchLength > bestMatchLength &&
+              matchLength >= adjustedThreshold) {
+            bestMatchingPrefix = prefix;
+            bestMatchLength = matchLength;
           }
-
-          if (matchLength > 3 && matchLength == prefix.length) {
-            matchingPrefix = prefix;
-            break;
-          }
-
-          // If no matching prefix is found, use the first few characters of the video name
-          if (matchingPrefix.isEmpty) {
-            matchingPrefix =
-                lowerCaseName.substring(0, min(lowerCaseName.length, 5));
-          }
-
-          groupedVideos.putIfAbsent(matchingPrefix, () => []).add(video);
         }
 
-        // Ensure filteredVideos is always initialized
-        filteredVideos = groupedVideos.entries.map((entry) {
-          return {
-            'prefix': entry.key,
-            'videos': entry.value,
-          };
-        }).toList();
+        if (bestMatchingPrefix.isEmpty) {
+          bestMatchingPrefix = videoName.substring(0, adjustedThreshold);
+        }
+
+        groupedVideos.putIfAbsent(bestMatchingPrefix, () => []).add(video);
       }
+
+      // Separate groups with more than one video and single videos
+      filteredVideos = [];
+      singleVideos = [];
+
+      groupedVideos.forEach((key, value) {
+        if (value.length > 1) {
+          filteredVideos.add({
+            'folder': key,
+            'videos': value,
+          });
+        } else {
+          singleVideos.add(value.first);
+        }
+      });
     });
+  }
+
+// Helper function to calculate the longest matching prefix length between two strings
+  int _calculatePrefixMatchLength(String s1, String s2) {
+    // Limit match length to the length of the shorter string
+    int minLength = s1.length < s2.length ? s1.length : s2.length;
+    int matchLength = 0;
+
+    for (int i = 0; i < minLength; i++) {
+      if (s1[i] == s2[i]) {
+        matchLength++;
+      } else {
+        break;
+      }
+    }
+
+    return matchLength;
   }
 
   void toggleDisplayView() {
@@ -492,10 +499,50 @@ class _VideoListScreenState extends State<VideoListScreen> {
             children: [
               isGroupedView
                   ? ListView.builder(
-                      itemCount: filteredVideos.length,
+                      itemCount: singleVideos.length + filteredVideos.length,
                       itemBuilder: (context, index) {
-                        final folder = filteredVideos[index];
-                        return FolderListTile(folder: folder);
+                        if (index < singleVideos.length) {
+                          // Render single videos first
+                          final video = singleVideos[index];
+                          return ListTile(
+                            leading: video['thumbnail'] != null
+                                ? ClipRRect(
+                                    borderRadius: BorderRadius.circular(5),
+                                    child: Image.memory(
+                                      video['thumbnail']!,
+                                      fit: BoxFit.cover,
+                                      width: 100,
+                                      height: 80,
+                                    ),
+                                  )
+                                : const Icon(Icons.videocam),
+                            title: Text(
+                              video['file'].path.split('/').last,
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 2,
+                            ),
+                            subtitle: Text(
+                                '${video['duration']} • ${video['resolution']}'),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => VideoPlayerScreen(
+                                    videoPaths: videos
+                                        .map((v) => v['file'].path as String)
+                                        .toList(),
+                                    initialIndex: index,
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        } else {
+                          // Render grouped folders at the end
+                          final folder =
+                              filteredVideos[index - singleVideos.length];
+                          return FolderListTile(folder: folder);
+                        }
                       },
                     )
                   : isListView
@@ -687,7 +734,8 @@ class FolderListTile extends StatelessWidget {
     final videos = folder['videos'] as List<Map<String, dynamic>>;
     final folderThumbnail =
         videos.isNotEmpty ? videos.first['thumbnail'] : null;
-    final folderName = folder['folder'];
+    final folderName =
+        folder.containsKey('folder') ? folder['folder'] : folder['prefix'];
     final videoCount = videos.length;
 
     return ListTile(
