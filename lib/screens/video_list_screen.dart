@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
+import 'package:vr_cinema/screens/grouped_list_screen.dart';
 import '../services/video_manager.dart';
 import 'Video_player_screen.dart';
 
@@ -13,8 +14,8 @@ class VideoListScreen extends StatefulWidget {
 }
 
 class _VideoListScreenState extends State<VideoListScreen> {
-  List<Map<String, dynamic>> videos = [];
-  List<Map<String, dynamic>> filteredVideos = [];
+    List<Map<String, dynamic>> videos = [];
+    List<Map<String, dynamic>> filteredVideos = [];
   List<Map<String, dynamic>> singleVideos = [];
   bool isLoading = true;
   bool isBackgroundLoading = false;
@@ -26,7 +27,6 @@ class _VideoListScreenState extends State<VideoListScreen> {
   bool isGroupedView = false; // For display view change
   TextEditingController searchController = TextEditingController();
   String currentMenu = 'main'; // Tracks which menu to show
-  GlobalKey _menuKey = GlobalKey(); // Key for animated switcher
 
   @override
   void initState() {
@@ -142,8 +142,8 @@ class _VideoListScreenState extends State<VideoListScreen> {
   void sortByResolution() {
     setState(() {
       filteredVideos.sort((a, b) {
-        final resolutionA = _resolutionToNumericValue(a['resolution']);
-        final resolutionB = _resolutionToNumericValue(b['resolution']);
+        final resolutionA = resolutionToNumericValue(a['resolution']);
+        final resolutionB = resolutionToNumericValue(b['resolution']);
         return isAscendingResolution
             ? resolutionA.compareTo(resolutionB)
             : resolutionB.compareTo(resolutionA);
@@ -153,7 +153,7 @@ class _VideoListScreenState extends State<VideoListScreen> {
     });
   }
 
-  int _resolutionToNumericValue(String resolution) {
+  int resolutionToNumericValue(String resolution) {
     // Map the resolution to a numeric value for comparison
     switch (resolution) {
       case '4K':
@@ -247,7 +247,8 @@ class _VideoListScreenState extends State<VideoListScreen> {
               .toList();
 
           // Calculate the longest common prefix among all video names
-          String commonPrefix = videoNames.reduce((common, name) => _longestCommonPrefix(common, name));
+          String commonPrefix = videoNames
+              .reduce((common, name) => _longestCommonPrefix(common, name));
           updatedGroups[commonPrefix] = videos;
         } else {
           // If only one video in group, keep original name
@@ -275,7 +276,10 @@ class _VideoListScreenState extends State<VideoListScreen> {
 // Helper function to extract words from the file name
   List<String> _extractWords(String fileName) {
     final nameWithoutExtension = fileName.split('.').first;
-    return nameWithoutExtension.split(RegExp(r'[^a-zA-Z0-9]+')).where((word) => word.isNotEmpty).toList();
+    return nameWithoutExtension
+        .split(RegExp(r'[^a-zA-Z0-9]+'))
+        .where((word) => word.isNotEmpty)
+        .toList();
   }
 
 // Helper function to find the longest common prefix between two strings
@@ -555,7 +559,7 @@ class _VideoListScreenState extends State<VideoListScreen> {
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => VideoPlayerScreen(
-                                    videoPaths: videos
+                                    videoPaths: singleVideos
                                         .map((v) => v['file'].path as String)
                                         .toList(),
                                     initialIndex: index,
@@ -788,9 +792,17 @@ class FolderListTile extends StatelessWidget {
           // Open folder options
         },
       ),
-      onTap: () {
-        // Navigate to folder's video list or start playing videos in folder
-      },
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => GroupedListScreen(
+                title: folder['folder'],
+                videos: folder['videos'], // Pass the group of videos
+              ),
+            ),
+          );
+        }
     );
   }
 }
