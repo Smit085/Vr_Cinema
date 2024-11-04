@@ -206,37 +206,60 @@ class _VideoListScreenState extends State<VideoListScreen> {
     setState(() {
       isGroupedView = true;
 
-      // Maps for grouped and single videos
+      // Step 1: Group videos by common words in names
       final Map<String, List<Map<String, dynamic>>> groupedVideos = {};
-      const int minMatchThreshold = 4;
 
       for (var video in videos) {
         final videoName = video['file'].path.split('/').last;
-        String bestMatchingPrefix = '';
-        int bestMatchLength = 0;
+        final videoWords = _extractWords(videoName);
 
-        for (var prefix in groupedVideos.keys) {
-          int matchLength = _calculatePrefixMatchLength(prefix, videoName);
+        String bestMatchingGroup = '';
+        bool isGrouped = false;
 
-          if (matchLength > bestMatchLength &&
-              matchLength >= minMatchThreshold) {
-            bestMatchingPrefix = prefix;
-            bestMatchLength = matchLength;
+        // Check existing groups for common words
+        for (var groupName in groupedVideos.keys) {
+          final groupWords = _extractWords(groupName);
+
+          if (videoWords.any((word) => groupWords.contains(word))) {
+            bestMatchingGroup = groupName;
+            isGrouped = true;
+            break;
           }
         }
 
-        if (bestMatchingPrefix.isEmpty) {
-          bestMatchingPrefix = videoName.substring(0, minMatchThreshold);
+        // If no matching group is found, use the current video name as a new group name
+        if (!isGrouped) {
+          bestMatchingGroup = videoName;
         }
 
-        groupedVideos.putIfAbsent(bestMatchingPrefix, () => []).add(video);
+        // Add the video to the best matching group
+        groupedVideos.putIfAbsent(bestMatchingGroup, () => []).add(video);
       }
 
-      // Separate groups with more than one video and single videos
+      // Step 2: Refine group names based on longest common prefix in each group
+      final Map<String, List<Map<String, dynamic>>> updatedGroups = {};
+
+      groupedVideos.forEach((groupName, videos) {
+        if (videos.length > 1) {
+          // Get all video names in the group
+          List videoNames = videos
+              .map((video) => video['file'].path.split('/').last)
+              .toList();
+
+          // Calculate the longest common prefix among all video names
+          String commonPrefix = videoNames.reduce((common, name) => _longestCommonPrefix(common, name));
+          updatedGroups[commonPrefix] = videos;
+        } else {
+          // If only one video in group, keep original name
+          updatedGroups[groupName] = videos;
+        }
+      });
+
+      // Step 3: Separate grouped and single videos
       filteredVideos = [];
       singleVideos = [];
 
-      groupedVideos.forEach((key, value) {
+      updatedGroups.forEach((key, value) {
         if (value.length > 1) {
           filteredVideos.add({
             'folder': key,
@@ -249,8 +272,14 @@ class _VideoListScreenState extends State<VideoListScreen> {
     });
   }
 
-// Helper function to calculate the longest matching prefix length between two strings
-  int _calculatePrefixMatchLength(String s1, String s2) {
+// Helper function to extract words from the file name
+  List<String> _extractWords(String fileName) {
+    final nameWithoutExtension = fileName.split('.').first;
+    return nameWithoutExtension.split(RegExp(r'[^a-zA-Z0-9]+')).where((word) => word.isNotEmpty).toList();
+  }
+
+// Helper function to find the longest common prefix between two strings
+  String _longestCommonPrefix(String s1, String s2) {
     int minLength = s1.length < s2.length ? s1.length : s2.length;
     int matchLength = 0;
 
@@ -262,7 +291,7 @@ class _VideoListScreenState extends State<VideoListScreen> {
       }
     }
 
-    return matchLength;
+    return s1.substring(0, matchLength);
   }
 
   void toggleDisplayView() {
