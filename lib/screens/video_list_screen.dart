@@ -14,8 +14,8 @@ class VideoListScreen extends StatefulWidget {
 }
 
 class _VideoListScreenState extends State<VideoListScreen> {
-    List<Map<String, dynamic>> videos = [];
-    List<Map<String, dynamic>> filteredVideos = [];
+  List<Map<String, dynamic>> videos = [];
+  List<Map<String, dynamic>> filteredVideos = [];
   List<Map<String, dynamic>> singleVideos = [];
   bool isLoading = true;
   bool isBackgroundLoading = false;
@@ -546,7 +546,7 @@ class _VideoListScreenState extends State<VideoListScreen> {
                                       height: 80,
                                     ),
                                   )
-                                : const Icon(Icons.videocam),
+                                : const Icon(Icons.videocam, color: Colors.grey),
                             title: Text(
                               video['file'].path.split('/').last,
                               overflow: TextOverflow.ellipsis,
@@ -592,7 +592,7 @@ class _VideoListScreenState extends State<VideoListScreen> {
                                         height: 80,
                                       ),
                                     )
-                                  : const Icon(Icons.videocam),
+                                  : const Icon(Icons.videocam, color: Colors.grey),
                               title: Text(
                                 filteredVideos[index]['file']
                                     .path
@@ -667,7 +667,7 @@ class _VideoListScreenState extends State<VideoListScreen> {
                                               width: double.infinity,
                                               height: double.infinity,
                                             )
-                                          : const Icon(Icons.videocam),
+                                          : const Icon(Icons.videocam, color: Colors.grey),
                                       Positioned(
                                         bottom: 0,
                                         left: 0,
@@ -763,46 +763,112 @@ class FolderListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final videos = folder['videos'] as List<Map<String, dynamic>>;
-    final folderThumbnail =
-        videos.isNotEmpty ? videos.first['thumbnail'] : null;
     final folderName =
         folder.containsKey('folder') ? folder['folder'] : folder['prefix'];
     final videoCount = videos.length;
 
     return ListTile(
-      leading: folderThumbnail != null
+      leading: videos.isNotEmpty
           ? ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.memory(
-                folderThumbnail,
-                width: 50,
-                height: 50,
-                fit: BoxFit.cover,
+        borderRadius: BorderRadius.circular(5), // Apply radius to the outer card only
+        child: Container(
+          width: 100, // Width of the card
+          height: 80, // Height of the card
+          child: videos.length < 4
+              ? GridView.builder(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2, // Two images per row
+              childAspectRatio: 1, // Square aspect ratio
+              mainAxisSpacing: 0, // No spacing between rows
+              crossAxisSpacing: 0, // No spacing between columns
+            ),
+            itemCount: videos.length, // Show all available images
+            itemBuilder: (context, index) {
+              return Container(
+                child: videos[index]['thumbnail'] != null
+                    ? Image.memory(
+                  videos[index]['thumbnail'],
+                  fit: BoxFit.cover,
+                )
+                    : const Icon(Icons.videocam, color: Colors.grey),
+              );
+            },
+          )
+              : Column(
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        child: videos[0]['thumbnail'] != null
+                            ? Image.memory(
+                          videos[0]['thumbnail'],
+                          fit: BoxFit.cover,
+                        )
+                            : const Icon(Icons.videocam, color: Colors.grey),
+                      ),
+                    ),
+                    Expanded(
+                      child: Container(
+                        child: videos[1]['thumbnail'] != null
+                            ? Image.memory(
+                          videos[1]['thumbnail'],
+                          fit: BoxFit.cover,
+                        )
+                            : const Icon(Icons.videocam, color: Colors.grey),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            )
+              Expanded(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        child: videos.length > 2 && videos[2]['thumbnail'] != null
+                            ? Image.memory(
+                          videos[2]['thumbnail'],
+                          fit: BoxFit.cover,
+                        )
+                            : const Icon(Icons.videocam, color: Colors.grey),
+                      ),
+                    ),
+                    Expanded(
+                      child: Container(
+                        child: videos.length > 3 && videos[3]['thumbnail'] != null
+                            ? Image.memory(
+                          videos[3]['thumbnail'],
+                          fit: BoxFit.cover,
+                        )
+                            : const Icon(Icons.videocam, color: Colors.grey),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      )
           : const Icon(Icons.folder, size: 50),
       title: Text(
         folderName,
         style: const TextStyle(fontWeight: FontWeight.bold),
       ),
       subtitle: Text('$videoCount ${videoCount == 1 ? "video" : "videos"}'),
-      trailing: IconButton(
-        icon: const Icon(Icons.more_vert),
-        onPressed: () {
-          // Open folder options
-        },
-      ),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => GroupedListScreen(
-                title: folder['folder'],
-                videos: folder['videos'], // Pass the group of videos
-              ),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => GroupedListScreen(
+              title: folderName,
+              videos: folder['videos'], // Pass the group of videos
             ),
-          );
-        }
+          ),
+        );
+      },
     );
   }
 }

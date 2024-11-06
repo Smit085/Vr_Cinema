@@ -44,7 +44,7 @@ class VideoManager {
           final files = directory.listSync(recursive: true);
           for (var item in files) {
             if (item is File && _isVideoFile(item.path)) {
-              final thumbnailData = await _loadOrGenerateThumbnail(item.path);
+              final thumbnailData = await loadOrGenerateThumbnail(item.path);
               final videoDetails = await _getVideoDetails(item.path);
               onVideoFound({
                 'file': item,
@@ -89,7 +89,7 @@ class VideoManager {
     return thumbnailFile.existsSync() ? await thumbnailFile.readAsBytes() : null;
   }
 
-  static Future<Uint8List?> _loadOrGenerateThumbnail(String videoPath) async {
+  static Future<Uint8List?> loadOrGenerateThumbnail(String videoPath) async {
     final thumbnailDir = await getApplicationDocumentsDirectory();
     final thumbnailFile = File('${thumbnailDir.path}/${_getThumbnailFileName(videoPath)}');
 

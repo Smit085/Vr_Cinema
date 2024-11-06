@@ -43,7 +43,7 @@ class _MainScreenState extends State<MainScreen> {
 
   static final List<Widget> _widgetOptions = <Widget>[
     const VideoListScreen(),
-    const BrowseScreen(),
+    BrowseScreen(),
     const SettingScreen(),
   ];
 
