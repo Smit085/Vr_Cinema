@@ -21,6 +21,7 @@ class VideoPlayerScreen extends StatefulWidget {
 
 class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     with TickerProviderStateMixin {
+  bool _isLoading = true;
   late AnimationController _animationController;
   late VlcPlayerController _vlcPlayerController;
 
@@ -46,15 +47,16 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     super.initState();
     _currentIndex = widget.initialIndex;
     currentVideoPath = widget.videoPaths[_currentIndex];
-    _vlcPlayerController =
-        VlcPlayerController.file(File(currentVideoPath));
-    print(currentVideoPath);
+    if (Uri.parse(currentVideoPath).isAbsolute) {
+      _vlcPlayerController = VlcPlayerController.network(currentVideoPath);
+    } else {
+      _vlcPlayerController = VlcPlayerController.file(File(currentVideoPath));
+    }
 
     Future.delayed(const Duration(milliseconds: 300), () {
       _vlcPlayerController.play();
       _vlcPlayerController.setVolume(_volume);
       _isPlaying = true;
-      print("Track ${_vlcPlayerController.getSpuTrack().toString()}");
     });
 
     _animationController = AnimationController(
@@ -74,6 +76,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         _position = _vlcPlayerController.value.position ?? Duration.zero;
         _duration = _vlcPlayerController.value.duration ?? Duration.zero;
         _isPlaying = _vlcPlayerController.value.isPlaying;
+        if (_isPlaying && _isLoading) {
+          _isLoading = false;
+        }
       });
     });
 
@@ -180,6 +185,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                 ),
               ),
             ),
+            if (_isLoading)
+              const Center(
+                child: CircularProgressIndicator(
+                  color: Colors.red,
+                ),
+              ),
             AnimatedOpacity(
               opacity: _controlsVisible ? 1.0 : 0.0,
               duration: const Duration(milliseconds: 300),

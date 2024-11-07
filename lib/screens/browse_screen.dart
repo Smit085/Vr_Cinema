@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import '../services/video_manager.dart';
 import '../utils/video_utils.dart';
+import 'video_player_screen.dart';
 
 class BrowseScreen extends StatefulWidget {
   const BrowseScreen({Key? key}) : super(key: key);
@@ -16,10 +17,36 @@ class BrowseScreen extends StatefulWidget {
 class _BrowseScreenState extends State<BrowseScreen> {
   Directory? currentDirectory;
   List<FileSystemEntity> filesAndFolders = [];
+  List<FileSystemEntity> filteredFilesAndFolders = [];
   bool browsing = false;
   bool isLoading = false;
+  bool isSearching = false;
+  final searchController = TextEditingController();
   final Directory homeDirectory = Directory('/storage/emulated/0');
-  final List<String> videoExtensions = ['mp4', 'mkv', 'flv', 'avi', 'mov', 'wmv', 'webm'];
+  final List<String> videoExtensions = [
+    'mp4',
+    'mkv',
+    'flv',
+    'avi',
+    'mov',
+    'wmv',
+    'webm'
+  ];
+  final networkController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    searchController.addListener(_filterFilesAndFolders);
+  }
+
+  @override
+  void dispose() {
+    searchController.removeListener(_filterFilesAndFolders);
+    searchController.dispose();
+    networkController.dispose();
+    super.dispose();
+  }
 
   Future<void> loadInternalStorage() async {
     setState(() {
@@ -38,21 +65,26 @@ class _BrowseScreenState extends State<BrowseScreen> {
     List<FileSystemEntity> directories = [];
     List<FileSystemEntity> videoFiles = [];
 
-    await for (var entity in directory.list()) {
-      if (FileSystemEntity.isDirectorySync(entity.path)) {
-        directories.add(entity);
-      } else if (isVideoFile(entity.path)) {
-        videoFiles.add(entity);
+    try {
+      await for (var entity in directory.list()) {
+        if (FileSystemEntity.isDirectorySync(entity.path)) {
+          directories.add(entity);
+        } else if (isVideoFile(entity.path)) {
+          videoFiles.add(entity);
+        }
       }
 
       setState(() {
         filesAndFolders = [...directories, ...videoFiles];
+        filteredFilesAndFolders = filesAndFolders;
+      });
+    } catch (e) {
+      print("Error reading directory: $e");
+    } finally {
+      setState(() {
+        isLoading = false;
       });
     }
-
-    setState(() {
-      isLoading = false;
-    });
   }
 
   bool isVideoFile(String path) {
@@ -68,8 +100,17 @@ class _BrowseScreenState extends State<BrowseScreen> {
   }
 
   void goBack() {
-    if (currentDirectory != null && currentDirectory!.path != homeDirectory.path) {
+    if (isSearching) {
+      setState(() {
+        isSearching = false;
+        searchController.clear();
+        filteredFilesAndFolders = filesAndFolders; // Reset search results
+      });
+    } else if (currentDirectory != null &&
+        currentDirectory!.path != homeDirectory.path) {
       navigateToFolder(currentDirectory!.parent);
+    } else {
+      closeBrowsing(); // When at home directory, close browsing and search bar
     }
   }
 
@@ -78,22 +119,21 @@ class _BrowseScreenState extends State<BrowseScreen> {
       browsing = false;
       currentDirectory = null;
       filesAndFolders.clear();
+      isSearching = false; // Close search bar
+      searchController.clear(); // Clear search input
+      filteredFilesAndFolders = filesAndFolders; // Reset to full list
     });
   }
 
   String getFullPath() {
-    // Start from "Browser > Internal Storage" only if we're in the home directory
     if (currentDirectory == null || currentDirectory == homeDirectory) {
-      return "Browser > Internal Storage";
+      return "Internal Storage";
     }
-
-    // Replace the home directory part with "Internal Storage" and create path segments
-    List<String> pathSegments = currentDirectory!.path
-        .replaceFirst(homeDirectory.path, "Internal Storage")
-        .split(Platform.pathSeparator);
-
-    // Join the path segments with " > "
-    return "Browser > ${pathSegments.join(" > ")}";
+    String adjustedPath = currentDirectory!.path
+        .replaceFirst(homeDirectory.path, "Internal Storage");
+    return adjustedPath.startsWith("Internal Storage")
+        ? adjustedPath
+        : adjustedPath;
   }
 
   Future<Uint8List?> _getVideoThumbnail(String videoPath) async {
@@ -102,10 +142,57 @@ class _BrowseScreenState extends State<BrowseScreen> {
 
   Future<String> _getVideoDuration(String videoPath) async {
     final FlutterVideoInfo videoInfo = FlutterVideoInfo();
-    var info = await videoInfo.getVideoInfo(videoPath);
-    int durationMillis = (info?.duration as num).toInt();
-    String duration = formatDuration(durationMillis);
-    return duration;
+    try {
+      var info = await videoInfo.getVideoInfo(videoPath);
+      int durationMillis = (info?.duration as num).toInt();
+      return formatDuration(durationMillis);
+    } catch (e) {
+      return "Unknown"; // or a default value
+    }
+  }
+
+  void toggleSearch() {
+    setState(() {
+      isSearching = !isSearching;
+      if (!isSearching) {
+        searchController.clear();
+        filteredFilesAndFolders = filesAndFolders;
+      }
+    });
+  }
+
+  void clearSearch() {
+    searchController.clear();
+    _filterFilesAndFolders();
+  }
+
+  void _filterFilesAndFolders() {
+    String query = searchController.text.toLowerCase();
+    setState(() {
+      filteredFilesAndFolders = filesAndFolders.where((entity) {
+        String fileName = entity.path.split('/').last.toLowerCase();
+        return fileName.contains(query);
+      }).toList();
+    });
+  }
+
+  void playNetworkStream() {
+    String url = networkController.text.trim();
+    if (Uri.tryParse(url)?.hasAbsolutePath == true) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => VideoPlayerScreen(
+            videoPaths: [url],
+            initialIndex: 0,
+          ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter a valid video URL")),
+      );
+    }
   }
 
   @override
@@ -113,153 +200,212 @@ class _BrowseScreenState extends State<BrowseScreen> {
     bool atHomeDirectory = currentDirectory?.path == homeDirectory.path;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Internal Storage"),
-        backgroundColor: Colors.black87,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.grid_view),
-            onPressed: () {
-              // Toggle to grid view, implement as needed
-            },
-          ),
-        ],
-        bottom: browsing
-            ? PreferredSize(
-          preferredSize: const Size.fromHeight(30.0),
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              children: [
-                const Text(
-                  "Browser > ",
-                  style: TextStyle(color: Colors.white70, fontSize: 14),
-                ),
-                Flexible(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      String fullPath = getFullPath();
-                      String displayPath = fullPath;
-
-                      while (_textWidth(displayPath, context) > constraints.maxWidth) {
-                        int nextSeparatorIndex = displayPath.indexOf(" > ") + 3;
-                        if (nextSeparatorIndex < displayPath.length) {
-                          displayPath = "… " + displayPath.substring(nextSeparatorIndex);
-                        } else {
-                          break;
-                        }
-                      }
-
-                      return Text(
-                        displayPath,
-                        style: const TextStyle(color: Colors.white70, fontSize: 14),
-                        overflow: TextOverflow.ellipsis,
-                      );
-                    },
+        appBar: AppBar(
+          title: isSearching
+              ? TextField(
+                  controller: searchController,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText: 'Search videos...',
+                    border: InputBorder.none,
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: clearSearch,
+                    ),
                   ),
+                )
+              : const Text('Internal Storage'),
+          leading: browsing
+              ? IconButton(
+                  icon: Icon(atHomeDirectory ? Icons.close : Icons.arrow_back),
+                  onPressed: atHomeDirectory
+                      ? closeBrowsing
+                      : goBack, // Close search on close button
+                )
+              : null, // Hide leading icon on home screen
+          actions: [
+            if (browsing &&
+                !isSearching) // Show search and refresh only when browsing
+              IconButton(
+                icon: const Icon(Icons.search),
+                onPressed: toggleSearch,
+              ),
+            if (browsing &&
+                !isSearching) // Show refresh icon only when browsing
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                onPressed: () =>
+                    listFilesAndFolders(currentDirectory ?? homeDirectory),
+              ),
+          ],
+          bottom: browsing
+              ? PreferredSize(
+                  preferredSize: const Size.fromHeight(30.0),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
+                      children: [
+                        const Text("Browser > ",
+                            style:
+                                TextStyle(color: Colors.white70, fontSize: 14)),
+                        Flexible(
+                          child: Text(
+                            getFullPath(),
+                            style: const TextStyle(
+                                color: Colors.white70, fontSize: 14),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : null,
+        ),
+        body: WillPopScope(
+          onWillPop: () async {
+            goBack();
+            return false; // Prevent default back action
+          },
+          child: browsing
+              ? isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : filteredFilesAndFolders.isEmpty
+                      ? const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.videocam_off, size: 70, color: Colors.grey),
+                SizedBox(height: 10),
+                Text(
+                  'No Media Found',
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
                 ),
               ],
             ),
-          ),
-        )
-            : null,
-        leading: browsing
-            ? IconButton(
-          icon: Icon(atHomeDirectory ? Icons.close : Icons.arrow_back),
-          onPressed: () {
-            if (atHomeDirectory) {
-              closeBrowsing();
-            } else {
-              goBack();
-            }
-          },
-        )
-            : null,
-      ),
-      body: browsing
-          ? filesAndFolders.isEmpty && isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-        padding: const EdgeInsets.all(8.0),
-        itemCount: filesAndFolders.length,
-        itemBuilder: (context, index) {
-          FileSystemEntity entity = filesAndFolders[index];
-          bool isDirectory = FileSystemEntity.isDirectorySync(entity.path);
-          String fileName = entity.path.split('/').last;
-
-          return FutureBuilder(
-            future: isDirectory ? null : Future.wait([
-              _getVideoThumbnail(entity.path),
-              _getVideoDuration(entity.path),
-            ]),
-            builder: (context, snapshot) {
-              final data = snapshot.data as List<dynamic>?; // Cast snapshot.data to List<dynamic>
-              Uint8List? thumbnail = data?[0] as Uint8List?; // Cast the first item as Uint8List
-              String duration = data?[1] as String? ?? ''; // Cast the second item as String
-
-              return ListTile(
-                leading: isDirectory
-                    ? const Icon(Icons.folder, color: Colors.orange, size: 40,)
-                    : thumbnail != null
-                    ? Image.memory(thumbnail, width: 40, height: 40, fit: BoxFit.cover)
-                    : const Icon(Icons.videocam, color: Colors.grey),
-                title: Row(
+          )
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(8.0),
+                          itemCount: filteredFilesAndFolders.length,
+                          itemBuilder: (context, index) {
+                            FileSystemEntity entity =
+                                filteredFilesAndFolders[index];
+                            bool isDirectory =
+                                FileSystemEntity.isDirectorySync(entity.path);
+                            String fileName = entity.path.split('/').last;
+                            return FutureBuilder(
+                              future: isDirectory
+                                  ? null
+                                  : Future.wait([
+                                      _getVideoThumbnail(entity.path),
+                                      _getVideoDuration(entity.path)
+                                    ]),
+                              builder: (context, snapshot) {
+                                final data = snapshot.data as List<dynamic>?;
+                                Uint8List? thumbnail = data?[0] as Uint8List?;
+                                String duration = data?[1] as String? ?? '';
+                                return ListTile(
+                                  leading: isDirectory
+                                      ? const Icon(Icons.folder,
+                                          color: Colors.blue, size: 40)
+                                      : thumbnail != null
+                                          ? Image.memory(thumbnail,
+                                              width: 40,
+                                              height: 40,
+                                              fit: BoxFit.cover)
+                                          : const Icon(Icons.videocam,
+                                              color: Colors.grey),
+                                  title: Text(fileName,
+                                      style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w500),
+                                      overflow: TextOverflow.ellipsis),
+                                  subtitle: isDirectory ? null : Text(duration),
+                                  onTap: isDirectory
+                                      ? () => navigateToFolder(
+                                          Directory(entity.path))
+                                      : () {
+                                          final filteredVideos = filesAndFolders
+                                              .where((file) =>
+                                                  !FileSystemEntity
+                                                      .isDirectorySync(
+                                                          file.path) &&
+                                                  isVideoFile(file.path))
+                                              .toList();
+                                          final initialIndex =
+                                              filteredVideos.indexOf(entity);
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  VideoPlayerScreen(
+                                                videoPaths: filteredVideos
+                                                    .map((video) => video.path)
+                                                    .toList(),
+                                                initialIndex: initialIndex,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                );
+                              },
+                            );
+                          },
+                        )
+              : ListView(
+                  padding: const EdgeInsets.all(10.0),
                   children: [
-                    Expanded(
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Text(
-                          fileName,
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                          overflow: TextOverflow.fade,
-                          softWrap: false,
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.0),
+                      child: Text("Storages",
+                          style: TextStyle(color: Colors.grey, fontSize: 16)),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.sd_storage, color: Colors.blue),
+                      title: const Text("Internal memory"),
+                      onTap: loadInternalStorage,
+                    ),
+                    const SizedBox(height: 20),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.0),
+                      child: Text("Network Stream",
+                          style: TextStyle(color: Colors.grey, fontSize: 16)),
+                    ),
+                    TextField(
+                      controller: networkController,
+                      decoration: const InputDecoration(
+                        hintText: "Enter video URL",
+                        prefixIcon: Icon(Icons.link),
+                        border: OutlineInputBorder(),
+                      ),
+                      keyboardType: TextInputType.url,
+                    ),
+                    const SizedBox(height: 10),
+                    ElevatedButton.icon(
+                      onPressed: playNetworkStream,
+                      icon: Icon(
+                        Icons.play_arrow,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : Colors.black,
+                      ),
+                      label: Text(
+                        "Play",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white
+                              : Colors.black,
                         ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(5)),
+                        backgroundColor: Colors.blue,
                       ),
                     ),
                   ],
                 ),
-                subtitle: isDirectory
-                    ? null
-                    : Text(
-                  duration,
-                  style: TextStyle(color: Colors.grey),
-                ),
-                onTap: isDirectory
-                    ? () => navigateToFolder(Directory(entity.path))
-                    : () {
-                  // Handle file selection, such as opening the file or previewing
-                },
-              );
-            },
-          );
-        },
-      )
-          : ListView(
-        padding: const EdgeInsets.all(8.0),
-        children: [
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8.0),
-            child: Text(
-              "Storages",
-              style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.sd_storage, color: Colors.grey),
-            title: const Text("Internal memory"),
-            onTap: loadInternalStorage,
-          ),
-        ],
-      ),
-    );
-  }
-
-  double _textWidth(String text, BuildContext context) {
-    final TextPainter textPainter = TextPainter(
-      text: TextSpan(text: text, style: const TextStyle(fontSize: 14)),
-      maxLines: 1,
-      textDirection: TextDirection.ltr,
-    )..layout();
-    return textPainter.width;
+        ));
   }
 }
