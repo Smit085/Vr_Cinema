@@ -272,18 +272,20 @@ class _BrowseScreenState extends State<BrowseScreen> {
                   ? const Center(child: CircularProgressIndicator())
                   : filteredFilesAndFolders.isEmpty
                       ? const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.videocam_off, size: 70, color: Colors.grey),
-                SizedBox(height: 10),
-                Text(
-                  'No Media Found',
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
-                ),
-              ],
-            ),
-          )
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.videocam_off,
+                                  size: 70, color: Colors.grey),
+                              SizedBox(height: 10),
+                              Text(
+                                'No Media Found',
+                                style:
+                                    TextStyle(fontSize: 16, color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                        )
                       : ListView.builder(
                           padding: const EdgeInsets.all(8.0),
                           itemCount: filteredFilesAndFolders.length,
@@ -358,52 +360,60 @@ class _BrowseScreenState extends State<BrowseScreen> {
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 8.0),
                       child: Text("Storages",
-                          style: TextStyle(color: Colors.grey, fontSize: 16)),
+                          style: TextStyle(color: Colors.grey, fontSize: 18)),
                     ),
                     ListTile(
                       leading: const Icon(Icons.sd_storage, color: Colors.blue),
                       title: const Text("Internal memory"),
                       onTap: loadInternalStorage,
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 10),
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 8.0),
                       child: Text("Network Stream",
-                          style: TextStyle(color: Colors.grey, fontSize: 16)),
-                    ),
-                    TextField(
-                      controller: networkController,
-                      decoration: const InputDecoration(
-                        hintText: "Enter video URL",
-                        prefixIcon: Icon(Icons.link),
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: TextInputType.url,
+                          style: TextStyle(color: Colors.grey, fontSize: 18)),
                     ),
                     const SizedBox(height: 10),
-                    ElevatedButton.icon(
-                      onPressed: playNetworkStream,
-                      icon: Icon(
-                        Icons.play_arrow,
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.white
-                            : Colors.black,
-                      ),
-                      label: Text(
-                        "Play",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? Colors.white
-                              : Colors.black,
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 18.0),
+                      child: TextField(
+                        controller: networkController,
+                        decoration: const InputDecoration(
+                          hintText: "Enter video URL",
+                          prefixIcon: Icon(Icons.link),
+                          border: OutlineInputBorder(),
                         ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(5)),
-                        backgroundColor: Colors.blue,
+                        keyboardType: TextInputType.url,
                       ),
                     ),
+                    const SizedBox(height: 10),
+                    Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 18.0),
+                        child: ElevatedButton.icon(
+                          onPressed: playNetworkStream,
+                          icon: Icon(
+                            Icons.play_arrow,
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.white
+                                    : Colors.black,
+                          ),
+                          label: Text(
+                            "Play",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.white
+                                  : Colors.black,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(5)),
+                            backgroundColor: Colors.blue,
+                          ),
+                        ))
                   ],
                 ),
         ));

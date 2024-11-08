@@ -2,8 +2,10 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vr_cinema/screens/grouped_list_screen.dart';
 import '../services/video_manager.dart';
+import '../utils/PreferencesManager.dart';
 import 'Video_player_screen.dart';
 
 class VideoListScreen extends StatefulWidget {
@@ -23,15 +25,25 @@ class _VideoListScreenState extends State<VideoListScreen> {
   bool isAscendingName = true;
   bool isAscendingDuration = true;
   bool isAscendingResolution = true;
-  bool isListView = true; // For display view change
-  bool isGroupedView = false; // For display view change
+  bool isListView = true;
+  bool isGroupedView = false;
   TextEditingController searchController = TextEditingController();
   String currentMenu = 'main'; // Tracks which menu to show
 
   @override
   void initState() {
     super.initState();
+    _loadPreferences();
     fetchVideos();
+  }
+
+  void _loadPreferences() async {
+    var savedViewType  = await PreferencesManager.getViewType();
+
+    setState(() {
+      isListView = savedViewType ;
+    });
+
   }
 
   Future<void> fetchVideos() async {
@@ -206,7 +218,6 @@ class _VideoListScreenState extends State<VideoListScreen> {
     setState(() {
       isGroupedView = true;
 
-      // Step 1: Group videos by common words in names
       final Map<String, List<Map<String, dynamic>>> groupedVideos = {};
 
       for (var video in videos) {
@@ -216,7 +227,6 @@ class _VideoListScreenState extends State<VideoListScreen> {
         String bestMatchingGroup = '';
         bool isGrouped = false;
 
-        // Check existing groups for common words
         for (var groupName in groupedVideos.keys) {
           final groupWords = _extractWords(groupName);
 
@@ -227,36 +237,33 @@ class _VideoListScreenState extends State<VideoListScreen> {
           }
         }
 
-        // If no matching group is found, use the current video name as a new group name
         if (!isGrouped) {
           bestMatchingGroup = videoName;
         }
 
-        // Add the video to the best matching group
         groupedVideos.putIfAbsent(bestMatchingGroup, () => []).add(video);
       }
 
-      // Step 2: Refine group names based on longest common prefix in each group
       final Map<String, List<Map<String, dynamic>>> updatedGroups = {};
 
       groupedVideos.forEach((groupName, videos) {
         if (videos.length > 1) {
-          // Get all video names in the group
+
           List videoNames = videos
               .map((video) => video['file'].path.split('/').last)
               .toList();
 
-          // Calculate the longest common prefix among all video names
+
           String commonPrefix = videoNames
               .reduce((common, name) => _longestCommonPrefix(common, name));
           updatedGroups[commonPrefix] = videos;
         } else {
-          // If only one video in group, keep original name
+
           updatedGroups[groupName] = videos;
         }
       });
 
-      // Step 3: Separate grouped and single videos
+
       filteredVideos = [];
       singleVideos = [];
 
@@ -271,6 +278,13 @@ class _VideoListScreenState extends State<VideoListScreen> {
         }
       });
     });
+  }
+
+  void toggleDisplayView() {
+    setState(() {
+      isListView = !isListView;
+    });
+    PreferencesManager.saveViewType(isListView);
   }
 
 // Helper function to extract words from the file name
@@ -298,11 +312,6 @@ class _VideoListScreenState extends State<VideoListScreen> {
     return s1.substring(0, matchLength);
   }
 
-  void toggleDisplayView() {
-    setState(() {
-      isListView = !isListView;
-    });
-  }
 
   // Handle menu item selection
   void _handleMenuItem(String value) {
@@ -476,6 +485,7 @@ class _VideoListScreenState extends State<VideoListScreen> {
     });
   }
 
+
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
@@ -490,33 +500,33 @@ class _VideoListScreenState extends State<VideoListScreen> {
           appBar: AppBar(
             title: isSearching
                 ? TextField(
-                    controller: searchController,
-                    autofocus: true,
-                    decoration: const InputDecoration(
-                      hintText: 'Search videos...',
-                      border: InputBorder.none,
-                    ),
-                    onChanged: filterVideos,
-                  )
+              controller: searchController,
+              autofocus: true,
+              decoration: const InputDecoration(
+                hintText: 'Search videos...',
+                border: InputBorder.none,
+              ),
+              onChanged: filterVideos,
+            )
                 : const Text('Videos'),
             leading: isSearching
                 ? IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: toggleSearch,
-                  )
+              icon: const Icon(Icons.close),
+              onPressed: toggleSearch,
+            )
                 : null,
             actions: [
-              if (!isSearching) // Display search icon only when not searching
+              if (!isSearching && !isLoading)
                 IconButton(
                   icon: const Icon(Icons.search),
                   onPressed: toggleSearch,
                 ),
-              if (!isSearching) // Display refresh icon only when not searching
+              if (!isSearching && !isLoading)
                 IconButton(
                   icon: const Icon(Icons.refresh),
                   onPressed: fetchVideos,
                 ),
-              if (!isSearching) // Display menu icon only when not searching
+              if (!isSearching && !isLoading)
                 GestureDetector(
                   onTap: () => _showCustomMenu(context),
                   child: const Padding(
@@ -530,185 +540,185 @@ class _VideoListScreenState extends State<VideoListScreen> {
             children: [
               isGroupedView
                   ? ListView.builder(
-                      itemCount: singleVideos.length + filteredVideos.length,
-                      itemBuilder: (context, index) {
-                        if (index < singleVideos.length) {
-                          // Render single videos first
-                          final video = singleVideos[index];
-                          return ListTile(
-                            leading: video['thumbnail'] != null
-                                ? ClipRRect(
-                                    borderRadius: BorderRadius.circular(5),
-                                    child: Image.memory(
-                                      video['thumbnail']!,
-                                      fit: BoxFit.cover,
-                                      width: 100,
-                                      height: 80,
-                                    ),
-                                  )
-                                : const Icon(Icons.videocam, color: Colors.grey),
-                            title: Text(
-                              video['file'].path.split('/').last,
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 2,
-                            ),
-                            subtitle: Text(
-                                '${video['duration']} • ${video['resolution']}'),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => VideoPlayerScreen(
-                                    videoPaths: singleVideos
-                                        .map((v) => v['file'].path as String)
-                                        .toList(),
-                                    initialIndex: index,
-                                  ),
-                                ),
-                              );
-                            },
-                          );
-                        } else {
-                          // Render grouped folders at the end
-                          final folder =
-                              filteredVideos[index - singleVideos.length];
-                          return FolderListTile(folder: folder);
-                        }
-                      },
-                    )
-                  : isListView
-                      ? ListView.builder(
-                          itemCount: filteredVideos.length,
-                          itemBuilder: (context, index) {
-                            return ListTile(
-                              leading: filteredVideos[index]['thumbnail'] !=
-                                      null
-                                  ? ClipRRect(
-                                      borderRadius: BorderRadius.circular(5),
-                                      child: Image.memory(
-                                        filteredVideos[index]['thumbnail']!,
-                                        fit: BoxFit.cover,
-                                        width: 100,
-                                        height: 80,
-                                      ),
-                                    )
-                                  : const Icon(Icons.videocam, color: Colors.grey),
-                              title: Text(
-                                filteredVideos[index]['file']
-                                    .path
-                                    .split('/')
-                                    .last,
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 2,
-                              ),
-                              subtitle: Text(
-                                  '${filteredVideos[index]['duration']} • ${filteredVideos[index]['resolution']}'),
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => VideoPlayerScreen(
-                                      videoPaths: filteredVideos
-                                          .map((video) =>
-                                              video['file'].path as String)
-                                          .toList(),
-                                      initialIndex: index,
-                                    ),
-                                  ),
-                                );
-                              },
-                            );
-                          },
-                        )
-                      : GridView.builder(
-                          padding: const EdgeInsets.all(
-                              4.0), // Add padding around the grid
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2, // Number of columns in the grid
-                            crossAxisSpacing: 2.0,
-                            mainAxisSpacing: 2.0,
-                            childAspectRatio:
-                                3 / 2, // Adjust the aspect ratio as needed
-                          ),
-                          itemCount: filteredVideos.length,
-                          itemBuilder: (context, index) {
-                            return Padding(
-                              padding: const EdgeInsets.all(
-                                  4.0), // Padding around each grid item
-                              child: GestureDetector(
-                                onTap: () {
-                                  // Navigate to VideoDetailScreen and pass the videoPaths
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => VideoPlayerScreen(
-                                        videoPaths: filteredVideos
-                                            .map((video) =>
-                                                video['file'].path as String)
-                                            .toList(),
-                                        initialIndex: index,
-                                      ),
-                                    ),
-                                  );
-                                },
-                                child: Card(
-                                  clipBehavior: Clip.antiAlias,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(5),
-                                  ),
-                                  child: Stack(
-                                    children: [
-                                      filteredVideos[index]['thumbnail'] != null
-                                          ? Image.memory(
-                                              filteredVideos[index]
-                                                  ['thumbnail']!,
-                                              fit: BoxFit.cover,
-                                              width: double.infinity,
-                                              height: double.infinity,
-                                            )
-                                          : const Icon(Icons.videocam, color: Colors.grey),
-                                      Positioned(
-                                        bottom: 0,
-                                        left: 0,
-                                        right: 0,
-                                        child: Container(
-                                          color: Colors.black54,
-                                          padding: const EdgeInsets.all(4.0),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                filteredVideos[index]['file']
-                                                    .path
-                                                    .split('/')
-                                                    .last,
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 12,
-                                                ),
-                                                overflow: TextOverflow.ellipsis,
-                                                maxLines: 1,
-                                              ),
-                                              Text(
-                                                '${filteredVideos[index]['duration']} • ${filteredVideos[index]['resolution']}',
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 10,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
+                itemCount: singleVideos.length + filteredVideos.length,
+                itemBuilder: (context, index) {
+                  if (index < singleVideos.length) {
+                    // Render single videos first
+                    final video = singleVideos[index];
+                    return ListTile(
+                      leading: video['thumbnail'] != null
+                          ? ClipRRect(
+                        borderRadius: BorderRadius.circular(5),
+                        child: Image.memory(
+                          video['thumbnail']!,
+                          fit: BoxFit.cover,
+                          width: 100,
+                          height: 80,
                         ),
+                      )
+                          : const Icon(Icons.videocam, color: Colors.grey),
+                      title: Text(
+                        video['file'].path.split('/').last,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 2,
+                      ),
+                      subtitle: Text(
+                          '${video['duration']} • ${video['resolution']}'),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => VideoPlayerScreen(
+                              videoPaths: singleVideos
+                                  .map((v) => v['file'].path as String)
+                                  .toList(),
+                              initialIndex: index,
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  } else {
+                    // Render grouped folders at the end
+                    final folder =
+                    filteredVideos[index - singleVideos.length];
+                    return FolderListTile(folder: folder);
+                  }
+                },
+              )
+                  : isListView
+                  ? ListView.builder(
+                itemCount: filteredVideos.length,
+                itemBuilder: (context, index) {
+                  return ListTile(
+                    leading: filteredVideos[index]['thumbnail'] !=
+                        null
+                        ? ClipRRect(
+                      borderRadius: BorderRadius.circular(5),
+                      child: Image.memory(
+                        filteredVideos[index]['thumbnail']!,
+                        fit: BoxFit.cover,
+                        width: 100,
+                        height: 80,
+                      ),
+                    )
+                        : const Icon(Icons.videocam, color: Colors.grey),
+                    title: Text(
+                      filteredVideos[index]['file']
+                          .path
+                          .split('/')
+                          .last,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 2,
+                    ),
+                    subtitle: Text(
+                        '${filteredVideos[index]['duration']} • ${filteredVideos[index]['resolution']}'),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => VideoPlayerScreen(
+                            videoPaths: filteredVideos
+                                .map((video) =>
+                            video['file'].path as String)
+                                .toList(),
+                            initialIndex: index,
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              )
+                  : GridView.builder(
+                padding: const EdgeInsets.all(
+                    4.0), // Add padding around the grid
+                gridDelegate:
+                const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2, // Number of columns in the grid
+                  crossAxisSpacing: 2.0,
+                  mainAxisSpacing: 2.0,
+                  childAspectRatio:
+                  3 / 2, // Adjust the aspect ratio as needed
+                ),
+                itemCount: filteredVideos.length,
+                itemBuilder: (context, index) {
+                  return Padding(
+                    padding: const EdgeInsets.all(
+                        4.0), // Padding around each grid item
+                    child: GestureDetector(
+                      onTap: () {
+                        // Navigate to VideoDetailScreen and pass the videoPaths
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => VideoPlayerScreen(
+                              videoPaths: filteredVideos
+                                  .map((video) =>
+                              video['file'].path as String)
+                                  .toList(),
+                              initialIndex: index,
+                            ),
+                          ),
+                        );
+                      },
+                      child: Card(
+                        clipBehavior: Clip.antiAlias,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        child: Stack(
+                          children: [
+                            filteredVideos[index]['thumbnail'] != null
+                                ? Image.memory(
+                              filteredVideos[index]
+                              ['thumbnail']!,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: double.infinity,
+                            )
+                                : const Icon(Icons.videocam, color: Colors.grey),
+                            Positioned(
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                              child: Container(
+                                color: Colors.black54,
+                                padding: const EdgeInsets.all(4.0),
+                                child: Column(
+                                  crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      filteredVideos[index]['file']
+                                          .path
+                                          .split('/')
+                                          .last,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
+                                    ),
+                                    Text(
+                                      '${filteredVideos[index]['duration']} • ${filteredVideos[index]['resolution']}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
               Align(
                 alignment: Alignment.bottomCenter,
                 child: AnimatedContainer(
@@ -724,22 +734,22 @@ class _VideoListScreenState extends State<VideoListScreen> {
                   padding: const EdgeInsets.all(2),
                   child: isBackgroundLoading
                       ? Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text(
-                              "Searching for videos",
-                              style: TextStyle(fontSize: 14),
-                            ),
-                            const SizedBox(width: 10),
-                            LoadingAnimationWidget.staggeredDotsWave(
-                              color: Theme.of(context).brightness ==
-                                      Brightness.dark
-                                  ? Colors.white
-                                  : Colors.black,
-                              size: 25,
-                            ),
-                          ],
-                        )
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        "Searching for videos",
+                        style: TextStyle(fontSize: 14),
+                      ),
+                      const SizedBox(width: 10),
+                      LoadingAnimationWidget.staggeredDotsWave(
+                        color: Theme.of(context).brightness ==
+                            Brightness.dark
+                            ? Colors.white
+                            : Colors.black,
+                        size: 25,
+                      ),
+                    ],
+                  )
                       : const SizedBox.shrink(),
                 ),
               ),
