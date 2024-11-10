@@ -27,7 +27,8 @@ dependencies:
   loading_animation_widget: ^1.2.1
   flutter_video_info: ^1.3.2
   flutter_vlc_player: ^7.4.2
-#  volume_controller: ^2.0.8
+  volume_controller: ^2.0.8
+  screen_brightness: ^2.0.0+2
 #  volume_watcher: ^2.0.1
 #  flutter_screenutil: ^5.9.3
 #  screen_brightness: ^1.0.1

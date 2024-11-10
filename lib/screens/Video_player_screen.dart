@@ -3,6 +3,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_vlc_player/flutter_vlc_player.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:screen_brightness/screen_brightness.dart';
+import 'package:volume_controller/volume_controller.dart';
 import 'package:vr_cinema/screens/vr_cinema_screen.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
@@ -20,31 +23,48 @@ class VideoPlayerScreen extends StatefulWidget {
 }
 
 class _VideoPlayerScreenState extends State<VideoPlayerScreen>
-    with TickerProviderStateMixin {
+    with SingleTickerProviderStateMixin {
   bool _isLoading = true;
   late AnimationController _animationController;
   late VlcPlayerController _vlcPlayerController;
 
-  Future<void> initializePlayer() async {}
+  // Future<void> initializePlayer() async {}
+  final Duration seekDuration = const Duration(seconds: 10);
   late Timer _timer;
   late Timer _controlsTimer;
+  Timer? _volumeTimer;
+  Timer? _brightnessTimer;
   bool _isPlaying = false;
   bool _isMuted = false;
   bool _isFullscreen = false;
   // final bool _subtitlesEnabled = true;
   bool _controlsVisible = true;
-  int _volume = 50;
+  double _volume = 0.5;
   int _currentIndex = 0;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
   double _aspectRatio = 16 / 9;
   double selectedSpeed = 1.0;
+  double _brightness = 0.5;
   late String currentVideoPath;
-
+  bool _showSeekFeedback = false;
+  bool _isSeekingForward = false;
+  bool _showVolumeFeedback = false;
+  bool _showBrightnessFeedback = false;
 
   @override
   void initState() {
     super.initState();
+
+    getSystemBrightness();
+    VolumeController().listener((volume) {
+      setState(() {
+        _volume = volume;
+        _isMuted = _volume <= 0.05; // Use threshold for muting
+      });
+    });
+    VolumeController().showSystemUI = false;
+
     _currentIndex = widget.initialIndex;
     currentVideoPath = widget.videoPaths[_currentIndex];
     if (Uri.parse(currentVideoPath).isAbsolute) {
@@ -55,7 +75,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
     Future.delayed(const Duration(milliseconds: 300), () {
       _vlcPlayerController.play();
-      _vlcPlayerController.setVolume(_volume);
+      _vlcPlayerController.setVolume((_volume * 100).toInt());
       _isPlaying = true;
     });
 
@@ -85,12 +105,36 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     _startControlsTimer();
   }
 
+  Future<void> getSystemBrightness() async {
+    try {
+      double brightness = await ScreenBrightness.instance.system;
+      await ScreenBrightness.instance.setApplicationScreenBrightness(brightness);
+    } catch (e) {
+      // print('Failed to set system brightness: $e');
+    }
+  }
+
+  Future<void> setApplicationBrightness(double brightness) async {
+    try {
+      await ScreenBrightness.instance
+          .setApplicationScreenBrightness(brightness);
+    } catch (e) {
+      // debugPrint(e.toString());
+      // throw 'Failed to set application brightness';
+    }
+  }
+
   @override
   void dispose() {
+    _animationController.dispose();
+    _volumeTimer?.cancel();
+    _brightnessTimer?.cancel();
     _vlcPlayerController.stop();
     _vlcPlayerController.dispose();
     _timer.cancel();
     _controlsTimer.cancel();
+    VolumeController().removeListener();
+    ScreenBrightness.instance.resetScreenBrightness();
     super.dispose();
   }
 
@@ -131,10 +175,69 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     _vlcPlayerController.seekTo(position);
   }
 
-  void _changeVolume(double volume) {
+  void _seekForward() {
+    final newPosition = _position + seekDuration;
+    if (newPosition < _duration) {
+      _vlcPlayerController.seekTo(newPosition);
+    } else {
+      _vlcPlayerController.seekTo(_duration);
+    }
+    _showSeekFeedbackAnimation(true);
+  }
+
+  void _seekBackward() {
+    final newPosition = _position - seekDuration;
+    if (newPosition > Duration.zero) {
+      _vlcPlayerController.seekTo(newPosition);
+    } else {
+      _vlcPlayerController.seekTo(Duration.zero);
+    }
+    _showSeekFeedbackAnimation(false);
+  }
+
+  void _showSeekFeedbackAnimation(bool isForward) {
     setState(() {
-      _volume = volume.toInt();
-      _vlcPlayerController.setVolume(_volume);
+      _isSeekingForward = isForward;
+      _showSeekFeedback = true;
+    });
+    Future.delayed(const Duration(milliseconds: 500), () {
+      setState(() {
+        _showSeekFeedback = false;
+      });
+    });
+  }
+
+  void _adjustVolume(double change) {
+    setState(() {
+      _volume = (_volume + change).clamp(0.0, 1.0);
+      VolumeController().setVolume(_volume);
+      _showVolumeFeedback = true;
+
+      // Cancel the previous timer if it's running
+      _volumeTimer?.cancel();
+      // Set a new timer to hide the volume feedback after a delay
+      _volumeTimer = Timer(Duration(seconds: 1), () {
+        setState(() {
+          _showVolumeFeedback = false;
+        });
+      });
+    });
+  }
+
+  void _adjustBrightness(double change) {
+    setState(() {
+      _brightness = (_brightness + change).clamp(0.0, 1.0);
+      ScreenBrightness.instance.setApplicationScreenBrightness(_brightness);
+      _showBrightnessFeedback = true;
+
+      // Cancel the previous timer if it's running
+      _brightnessTimer?.cancel();
+      // Set a new timer to hide the brightness feedback after a delay
+      _brightnessTimer = Timer(Duration(seconds: 1), () {
+        setState(() {
+          _showBrightnessFeedback = false;
+        });
+      });
     });
   }
 
@@ -168,6 +271,31 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: _toggleControls,
+      onDoubleTapDown: (details) {
+        final screenWidth = MediaQuery.of(context).size.width;
+        final doubleTapPosition = details.globalPosition.dx;
+
+        if (doubleTapPosition < screenWidth * 0.3) {
+          // Left side double tap - Seek backward
+          _seekBackward();
+        } else if (doubleTapPosition > screenWidth * 0.7) {
+          // Right side double tap - Seek forward
+          _seekForward();
+        } else {
+          // Center double tap - Play/Pause
+          _playPauseVideo();
+        }
+      },
+      onVerticalDragUpdate: (details) {
+        final screenWidth = MediaQuery.of(context).size.width;
+        if (details.globalPosition.dx < screenWidth * 0.5) {
+          // Left side - adjust brightness
+          _adjustBrightness(-details.primaryDelta! / 200);
+        } else {
+          // Right side - adjust volume
+          _adjustVolume(-details.primaryDelta! / 200);
+        }
+      },
       child: Scaffold(
         backgroundColor: Colors.black,
         body: Stack(
@@ -185,6 +313,118 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                 ),
               ),
             ),
+            if (_showVolumeFeedback)
+              Positioned(
+                left: MediaQuery.of(context).size.width * 0.1,
+                top: MediaQuery.of(context).size.height * 0.2,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '${(_volume * 100).toInt()}%', // Volume percentage
+                      style: TextStyle(color: Colors.white, fontSize: 18),
+                    ),
+                    SizedBox(height: 8),
+                    SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        trackHeight: 1.5,
+                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
+                        overlayShape: const RoundSliderOverlayShape(overlayRadius: 16.0),
+                        activeTrackColor: Colors.white,
+                        inactiveTrackColor: Colors.grey,
+                        thumbColor: Colors.white,
+                      ),
+                      child: RotatedBox(
+                        quarterTurns: 3,
+                        child: Slider(
+                          value: _volume,
+                          min: 0.0,
+                          max: 1.0,
+                          onChanged: (double value) {
+                            setState(() {
+                              _volume = value;
+                              VolumeController().setVolume(_volume);
+                              _isMuted = _volume == 0;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Icon(
+                      _isMuted ? Icons.volume_off : Icons.volume_up, // Toggle icon based on mute state
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                    const Text(
+                      'Volume',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ],
+                ),
+              ),
+            if (_showBrightnessFeedback)
+              Positioned(
+                right: MediaQuery.of(context).size.width * 0.1,
+                top: MediaQuery.of(context).size.height * 0.2,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '${(_brightness * 100).toInt()}%', // Brightness percentage
+                      style: TextStyle(color: Colors.white, fontSize: 18),
+                    ),
+                    SizedBox(height: 8),
+                    SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        trackHeight: 1.5,
+                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
+                        overlayShape: const RoundSliderOverlayShape(overlayRadius: 16.0),
+                        activeTrackColor: Colors.white,
+                        inactiveTrackColor: Colors.grey,
+                        thumbColor: Colors.white,
+                      ),
+                      child: RotatedBox(
+                        quarterTurns: 3,
+                        child: Slider(
+                          value: _brightness,
+                          min: 0.0,
+                          max: 1.0,
+                          onChanged: (value) {
+                            setState(() {
+                              _brightness = value;
+                            });
+                            setApplicationBrightness(value);
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Icon(Icons.brightness_6, color: Colors.white, size: 24),
+                    const Text(
+                      'Brightness',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ],
+                ),
+              ),
+            if (_showSeekFeedback)
+              Positioned(
+                left: _isSeekingForward ? null : 40, // Left for rewind
+                right: _isSeekingForward ? 40 : null, // Right for forward
+                top: MediaQuery.of(context).size.height * 0.4,
+                child: AnimatedOpacity(
+                  opacity: _showSeekFeedback ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 200),
+                  child: Icon(
+                    _isSeekingForward
+                        ? Icons.fast_forward_rounded
+                        : Icons.fast_rewind_rounded,
+                    color: Colors.white,
+                    size: 50,
+                  ),
+                ),
+              ),
             if (_isLoading)
               const Center(
                 child: CircularProgressIndicator(
@@ -248,7 +488,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                                 child: SingleChildScrollView(
                                   scrollDirection: Axis.horizontal,
                                   child: Row(
-                                    mainAxisSize: MainAxisSize.min, // Keep this row size to a minimum
+                                    mainAxisSize: MainAxisSize
+                                        .min, // Keep this row size to a minimum
                                     children: [
                                       Text(_formatDuration(_position)),
                                       const Text(" / "),
@@ -273,8 +514,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                             ),
                             IconButton(
                               icon: Icon(
-                                _isFullscreen ? Icons.fullscreen_exit : Icons.fullscreen,
-                                color: _isFullscreen ? Colors.red : Colors.white,
+                                _isFullscreen
+                                    ? Icons.fullscreen_exit
+                                    : Icons.fullscreen,
+                                color:
+                                    _isFullscreen ? Colors.red : Colors.white,
                               ),
                               onPressed: _toggleFullscreen,
                             ),
@@ -437,7 +681,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         borderRadius: BorderRadius.vertical(top: Radius.circular(8.0)),
       ),
       builder: (BuildContext context) {
-        bool showingSpeedOptions = false; // Reset every time the modal is opened
+        bool showingSpeedOptions =
+            false; // Reset every time the modal is opened
 
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
@@ -472,7 +717,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => VrCinemaScreen(videoPath: currentVideoPath, initialScene: 'VR_Room',),
+                              builder: (context) => VrCinemaScreen(
+                                videoPath: currentVideoPath,
+                                initialScene: 'VR_Room',
+                              ),
                             ),
                           );
                           print("Watch In VR Tapped");
@@ -486,7 +734,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => VrCinemaScreen(videoPath: currentVideoPath, initialScene: 'VR_Livingroom',),
+                              builder: (context) => VrCinemaScreen(
+                                videoPath: currentVideoPath,
+                                initialScene: 'VR_Livingroom',
+                              ),
                             ),
                           );
                           print("Watch In VR Tapped");
@@ -494,13 +745,17 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                       ),
                     ] else ...[
                       SizedBox(
-                        height: 300, // Set the desired height for the speed options
-                        child: SingleChildScrollView( // Allows scrolling if content exceeds height
+                        height:
+                            300, // Set the desired height for the speed options
+                        child: SingleChildScrollView(
+                          // Allows scrolling if content exceeds height
                           child: Column(
                             children: [
                               ListTile(
                                 title: const Text('0.25x'),
-                                trailing: selectedSpeed == 0.25 ? const Icon(Icons.check) : null,
+                                trailing: selectedSpeed == 0.25
+                                    ? const Icon(Icons.check)
+                                    : null,
                                 onTap: () {
                                   print("0.25x speed selected");
                                   setState(() {
@@ -512,7 +767,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                               ),
                               ListTile(
                                 title: const Text('0.5x'),
-                                trailing: selectedSpeed == 0.5 ? const Icon(Icons.check) : null,
+                                trailing: selectedSpeed == 0.5
+                                    ? const Icon(Icons.check)
+                                    : null,
                                 onTap: () {
                                   print("0.5x speed selected");
                                   setState(() {
@@ -524,7 +781,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                               ),
                               ListTile(
                                 title: const Text('0.75x'),
-                                trailing: selectedSpeed == 0.75 ? const Icon(Icons.check) : null,
+                                trailing: selectedSpeed == 0.75
+                                    ? const Icon(Icons.check)
+                                    : null,
                                 onTap: () {
                                   print("0.75x speed selected");
                                   setState(() {
@@ -536,7 +795,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                               ),
                               ListTile(
                                 title: const Text('1.0x (Normal)'),
-                                trailing: selectedSpeed == 1.0 ? const Icon(Icons.check) : null,
+                                trailing: selectedSpeed == 1.0
+                                    ? const Icon(Icons.check)
+                                    : null,
                                 onTap: () {
                                   print("1.0x speed selected");
                                   setState(() {
@@ -548,7 +809,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                               ),
                               ListTile(
                                 title: const Text('1.25x'),
-                                trailing: selectedSpeed == 1.25 ? const Icon(Icons.check) : null,
+                                trailing: selectedSpeed == 1.25
+                                    ? const Icon(Icons.check)
+                                    : null,
                                 onTap: () {
                                   print("1.25x speed selected");
                                   setState(() {
@@ -560,7 +823,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                               ),
                               ListTile(
                                 title: const Text('1.5x'),
-                                trailing: selectedSpeed == 1.5 ? const Icon(Icons.check) : null,
+                                trailing: selectedSpeed == 1.5
+                                    ? const Icon(Icons.check)
+                                    : null,
                                 onTap: () {
                                   print("1.5x speed selected");
                                   setState(() {
@@ -572,7 +837,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                               ),
                               ListTile(
                                 title: const Text('1.75x'),
-                                trailing: selectedSpeed == 1.75 ? const Icon(Icons.check) : null,
+                                trailing: selectedSpeed == 1.75
+                                    ? const Icon(Icons.check)
+                                    : null,
                                 onTap: () {
                                   print("1.75x speed selected");
                                   setState(() {
@@ -584,7 +851,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                               ),
                               ListTile(
                                 title: const Text('2.0x'),
-                                trailing: selectedSpeed == 2.0 ? const Icon(Icons.check) : null,
+                                trailing: selectedSpeed == 2.0
+                                    ? const Icon(Icons.check)
+                                    : null,
                                 onTap: () {
                                   print("2.0x speed selected");
                                   setState(() {
@@ -613,7 +882,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   void _toggleMute() {
     setState(() {
       _isMuted = !_isMuted;
-      _vlcPlayerController.setVolume(_isMuted ? 0 : _volume);
+      if (_isMuted) {
+        _volume = 0; // Set _volume to 0 to reflect muted state
+      } else {
+        _volume = 0.5; // Set default volume when unmuting if no saved value
+      }
+      // _vlcPlayerController.setVolume((_isMuted ? 0 : _volume * 100).toInt()); // Apply volume to controller
     });
   }
 
