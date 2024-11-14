@@ -710,7 +710,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                       ),
                       const Divider(),
                       ListTile(
-                        title: const Text('Watch In VR_Room'),
+                        title: const Text('Watch In Theater'),
                         trailing: const Icon(Icons.settings),
                         onTap: () {
                           _vlcPlayerController.pause();
@@ -719,8 +719,26 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                             MaterialPageRoute(
                               builder: (context) => VrCinemaScreen(
                                 videoPath: currentVideoPath,
-                                initialScene: 'VR_Room',
+                                initialScene: 'Theater',
                               ),
+                            ),
+                          );
+                          print("Watch In VR Tapped");
+                        },
+                      ),
+                      ListTile(
+                        title: const Text('Watch In VR_Room'),
+                        trailing: const Icon(Icons.settings),
+                        onTap: () {
+                          _vlcPlayerController.pause();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  VrCinemaScreen(
+                                videoPath: currentVideoPath,
+                                initialScene: 'VR_Room',
+                              )
                             ),
                           );
                           print("Watch In VR Tapped");

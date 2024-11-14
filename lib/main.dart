@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:vr_cinema/screens/browse_screen.dart';
@@ -23,10 +24,45 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.light(), // Light theme
-      darkTheme: ThemeData.dark(), // Dark theme
-      themeMode: ThemeMode.system, // Use system theme mode
-      home: const MainScreen(),
+      theme: ThemeData.light(),
+      darkTheme: ThemeData.dark(),
+      themeMode: ThemeMode.system,
+      home: const SplashScreen(), // Start with SplashScreen
+    );
+  }
+}
+
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
+  @override
+  _SplashScreenState createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Timer(const Duration(seconds: 1), _navigateToHome); // 3-second delay
+  }
+
+  void _navigateToHome() {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (context) => const MainScreen()),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Adaptive background color
+      body: Center(
+        child: Image.asset(
+          'assets/logo_with_text.png',
+          width: 350, // Adjust logo size
+          height: 350,
+        ),
+      ),
     );
   }
 }
@@ -43,7 +79,7 @@ class _MainScreenState extends State<MainScreen> {
 
   static final List<Widget> _widgetOptions = <Widget>[
     const VideoListScreen(),
-    BrowseScreen(),
+    const BrowseScreen(),
     const SettingScreen(),
   ];
 
@@ -75,7 +111,7 @@ class _MainScreenState extends State<MainScreen> {
         onTap: () => _onItemTapped(index),
         splashColor: Colors.blue.withOpacity(0.3),
         highlightColor: Colors.transparent,
-        radius: 30.0, // Control ripple size
+        radius: 30.0,
         child: Container(
           height: 55,
           alignment: Alignment.center,
