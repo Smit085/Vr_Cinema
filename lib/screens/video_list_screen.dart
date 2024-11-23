@@ -488,6 +488,7 @@ class _VideoListScreenState extends State<VideoListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
     return WillPopScope(
         onWillPop: () async {
           if (isSearching) {
@@ -536,7 +537,9 @@ class _VideoListScreenState extends State<VideoListScreen> {
                 ),
             ],
           ),
-          body: Stack(
+          body:  Padding(
+              padding: EdgeInsets.only(top: mediaQuery.padding.top),
+              child: Stack(
             children: [
               isGroupedView
                   ? ListView.builder(
@@ -754,7 +757,7 @@ class _VideoListScreenState extends State<VideoListScreen> {
                 ),
               ),
             ],
-          ),
+          )),
         ));
   }
 

@@ -6,6 +6,7 @@ import 'package:flutter_vlc_player/flutter_vlc_player.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import 'package:volume_controller/volume_controller.dart';
+import 'package:vr_cinema/screens/View360.dart';
 import 'package:vr_cinema/screens/vr_cinema_screen.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
@@ -108,7 +109,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   Future<void> getSystemBrightness() async {
     try {
       double brightness = await ScreenBrightness.instance.system;
-      await ScreenBrightness.instance.setApplicationScreenBrightness(brightness);
+      await ScreenBrightness.instance
+          .setApplicationScreenBrightness(brightness);
     } catch (e) {
       // print('Failed to set system brightness: $e');
     }
@@ -126,6 +128,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
   @override
   void dispose() {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _animationController.dispose();
     _volumeTimer?.cancel();
     _brightnessTimer?.cancel();
@@ -144,6 +147,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         setState(() {
           _controlsVisible = false;
         });
+        SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       }
     });
   }
@@ -152,8 +156,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     setState(() {
       _controlsVisible = !_controlsVisible;
       if (_controlsVisible) {
+        SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
         _controlsTimer.cancel();
         _startControlsTimer();
+      } else {
+        SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       }
     });
   }
@@ -328,8 +335,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                     SliderTheme(
                       data: SliderTheme.of(context).copyWith(
                         trackHeight: 1.5,
-                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
-                        overlayShape: const RoundSliderOverlayShape(overlayRadius: 16.0),
+                        thumbShape: const RoundSliderThumbShape(
+                            enabledThumbRadius: 6.0),
+                        overlayShape:
+                            const RoundSliderOverlayShape(overlayRadius: 16.0),
                         activeTrackColor: Colors.white,
                         inactiveTrackColor: Colors.grey,
                         thumbColor: Colors.white,
@@ -352,7 +361,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                     ),
                     const SizedBox(height: 8),
                     Icon(
-                      _isMuted ? Icons.volume_off : Icons.volume_up, // Toggle icon based on mute state
+                      _isMuted
+                          ? Icons.volume_off
+                          : Icons.volume_up, // Toggle icon based on mute state
                       color: Colors.white,
                       size: 24,
                     ),
@@ -378,8 +389,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                     SliderTheme(
                       data: SliderTheme.of(context).copyWith(
                         trackHeight: 1.5,
-                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
-                        overlayShape: const RoundSliderOverlayShape(overlayRadius: 16.0),
+                        thumbShape: const RoundSliderThumbShape(
+                            enabledThumbRadius: 6.0),
+                        overlayShape:
+                            const RoundSliderOverlayShape(overlayRadius: 16.0),
                         activeTrackColor: Colors.white,
                         inactiveTrackColor: Colors.grey,
                         thumbColor: Colors.white,
@@ -400,7 +413,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Icon(Icons.brightness_6, color: Colors.white, size: 24),
+                    const Icon(Icons.brightness_6,
+                        color: Colors.white, size: 24),
                     const Text(
                       'Brightness',
                       style: TextStyle(color: Colors.white, fontSize: 16),
@@ -674,222 +688,178 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   }
 
   void _toggleSettings() {
-    showModalBottomSheet(
+    _toggleControls();
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(8.0)),
-      ),
+      barrierColor:
+          Colors.black54, // Optional: Dim background with transparency
       builder: (BuildContext context) {
-        bool showingSpeedOptions =
-            false; // Reset every time the modal is opened
+        bool showingSpeedOptions = false;
 
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
-            print("Bottom sheet opened");
-
-            return Container(
-              padding: const EdgeInsets.all(8.0),
-              constraints: const BoxConstraints(
-                maxWidth: 300,
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (!showingSpeedOptions) ...[
-                      ListTile(
-                        title: const Text('Playback Speed'),
-                        trailing: const Icon(Icons.speed),
-                        onTap: () {
-                          print("Playback Speed tapped");
-                          setState(() {
-                            showingSpeedOptions = true;
-                          });
-                        },
+            return Align(
+                alignment: Alignment.centerRight, // Align to the right
+                child: FractionallySizedBox(
+                    widthFactor: 0.35,
+                    child: Material(
+                      color: Colors.black.withOpacity(0.2),
+                      shape: const RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.horizontal(left: Radius.circular(8.0)),
                       ),
-                      const Divider(),
-                      ListTile(
-                        title: const Text('Watch In Theater'),
-                        trailing: const Icon(Icons.settings),
-                        onTap: () {
-                          _vlcPlayerController.pause();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => VrCinemaScreen(
-                                videoPath: currentVideoPath,
-                                initialScene: 'Theater',
-                              ),
+                      elevation: 8,
+                      child: Column(children: [
+                        Expanded(
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (!showingSpeedOptions) ...[
+                                  ListTile(
+                                    title: const Text('Playback Speed'),
+                                    trailing: const Icon(Icons.speed),
+                                    onTap: () {
+                                      setState(() {
+                                        showingSpeedOptions = true;
+                                      });
+                                    },
+                                  ),
+                                  const Divider(),
+                                  ListTile(
+                                    title: const Text('Watch In 360'),
+                                    trailing: const Icon(Icons.settings),
+                                    onTap: () {
+                                      _vlcPlayerController.pause();
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => VrCinemaScreen(
+                                            videoPath: currentVideoPath,
+                                            initialScene: '360View',
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  ListTile(
+                                    title: const Text('Watch In Apartment'),
+                                    trailing: const Icon(Icons.settings),
+                                    onTap: () {
+                                      _vlcPlayerController.pause();
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => VrCinemaScreen(
+                                            videoPath: currentVideoPath,
+                                            initialScene: 'Apartment',
+                                          ),
+                                        ),
+                                      );
+                                      print("Watch In VR Tapped");
+                                    },
+                                  ),
+                                  ListTile(
+                                    title: const Text('Watch In Classroom'),
+                                    trailing: const Icon(Icons.settings),
+                                    onTap: () {
+                                      _vlcPlayerController.pause();
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => VrCinemaScreen(
+                                            videoPath: currentVideoPath,
+                                            initialScene: 'Classroom',
+                                          ),
+                                        ),
+                                      );
+                                      print("Watch In VR Tapped");
+                                    },
+                                  ),
+                                  ListTile(
+                                    title: const Text('Watch In Theater'),
+                                    trailing: const Icon(Icons.settings),
+                                    onTap: () {
+                                      _vlcPlayerController.pause();
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => VrCinemaScreen(
+                                            videoPath: currentVideoPath,
+                                            initialScene: 'Theater',
+                                          ),
+                                        ),
+                                      );
+                                      print("Watch In VR Tapped");
+                                    },
+                                  ),
+                                  ListTile(
+                                    title: const Text('Watch In Room'),
+                                    trailing: const Icon(Icons.settings),
+                                    onTap: () {
+                                      _vlcPlayerController.pause();
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (context) =>
+                                                VrCinemaScreen(
+                                                  videoPath: currentVideoPath,
+                                                  initialScene: 'Room',
+                                                )),
+                                      );
+                                      print("Watch In VR Tapped");
+                                    },
+                                  ),
+                                  ListTile(
+                                    title: const Text('Watch In Livingroom'),
+                                    trailing: const Icon(Icons.settings),
+                                    onTap: () {
+                                      _vlcPlayerController.pause();
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => VrCinemaScreen(
+                                            videoPath: currentVideoPath,
+                                            initialScene: 'Livingroom',
+                                          ),
+                                        ),
+                                      );
+                                      print("Watch In VR Tapped");
+                                    },
+                                  ),
+                                ] else ...[
+                                  SizedBox(
+                                    height: 300,
+                                    child: SingleChildScrollView(
+                                      child: Column(
+                                        children: [
+                                          ListTile(
+                                            title: const Text('0.25x'),
+                                            trailing: selectedSpeed == 0.25
+                                                ? const Icon(Icons.check)
+                                                : null,
+                                            onTap: () {
+                                              setState(() {
+                                                selectedSpeed = 0.25;
+                                              });
+                                              _vlcPlayerController
+                                                  .setPlaybackSpeed(0.25);
+                                              Navigator.pop(context);
+                                            },
+                                          ),
+                                          // Add other playback speed options...
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
-                          );
-                          print("Watch In VR Tapped");
-                        },
-                      ),
-                      ListTile(
-                        title: const Text('Watch In VR_Room'),
-                        trailing: const Icon(Icons.settings),
-                        onTap: () {
-                          _vlcPlayerController.pause();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  VrCinemaScreen(
-                                videoPath: currentVideoPath,
-                                initialScene: 'VR_Room',
-                              )
-                            ),
-                          );
-                          print("Watch In VR Tapped");
-                        },
-                      ),
-                      ListTile(
-                        title: const Text('Watch In VR_Livingroom'),
-                        trailing: const Icon(Icons.settings),
-                        onTap: () {
-                          _vlcPlayerController.pause();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => VrCinemaScreen(
-                                videoPath: currentVideoPath,
-                                initialScene: 'VR_Livingroom',
-                              ),
-                            ),
-                          );
-                          print("Watch In VR Tapped");
-                        },
-                      ),
-                    ] else ...[
-                      SizedBox(
-                        height:
-                            300, // Set the desired height for the speed options
-                        child: SingleChildScrollView(
-                          // Allows scrolling if content exceeds height
-                          child: Column(
-                            children: [
-                              ListTile(
-                                title: const Text('0.25x'),
-                                trailing: selectedSpeed == 0.25
-                                    ? const Icon(Icons.check)
-                                    : null,
-                                onTap: () {
-                                  print("0.25x speed selected");
-                                  setState(() {
-                                    selectedSpeed = 0.25;
-                                  });
-                                  _vlcPlayerController.setPlaybackSpeed(0.25);
-                                  Navigator.pop(context);
-                                },
-                              ),
-                              ListTile(
-                                title: const Text('0.5x'),
-                                trailing: selectedSpeed == 0.5
-                                    ? const Icon(Icons.check)
-                                    : null,
-                                onTap: () {
-                                  print("0.5x speed selected");
-                                  setState(() {
-                                    selectedSpeed = 0.5;
-                                  });
-                                  _vlcPlayerController.setPlaybackSpeed(0.5);
-                                  Navigator.pop(context);
-                                },
-                              ),
-                              ListTile(
-                                title: const Text('0.75x'),
-                                trailing: selectedSpeed == 0.75
-                                    ? const Icon(Icons.check)
-                                    : null,
-                                onTap: () {
-                                  print("0.75x speed selected");
-                                  setState(() {
-                                    selectedSpeed = 0.75;
-                                  });
-                                  _vlcPlayerController.setPlaybackSpeed(0.75);
-                                  Navigator.pop(context);
-                                },
-                              ),
-                              ListTile(
-                                title: const Text('1.0x (Normal)'),
-                                trailing: selectedSpeed == 1.0
-                                    ? const Icon(Icons.check)
-                                    : null,
-                                onTap: () {
-                                  print("1.0x speed selected");
-                                  setState(() {
-                                    selectedSpeed = 1.0;
-                                  });
-                                  _vlcPlayerController.setPlaybackSpeed(1.0);
-                                  Navigator.pop(context);
-                                },
-                              ),
-                              ListTile(
-                                title: const Text('1.25x'),
-                                trailing: selectedSpeed == 1.25
-                                    ? const Icon(Icons.check)
-                                    : null,
-                                onTap: () {
-                                  print("1.25x speed selected");
-                                  setState(() {
-                                    selectedSpeed = 1.25;
-                                  });
-                                  _vlcPlayerController.setPlaybackSpeed(1.25);
-                                  Navigator.pop(context);
-                                },
-                              ),
-                              ListTile(
-                                title: const Text('1.5x'),
-                                trailing: selectedSpeed == 1.5
-                                    ? const Icon(Icons.check)
-                                    : null,
-                                onTap: () {
-                                  print("1.5x speed selected");
-                                  setState(() {
-                                    selectedSpeed = 1.5;
-                                  });
-                                  _vlcPlayerController.setPlaybackSpeed(1.5);
-                                  Navigator.pop(context);
-                                },
-                              ),
-                              ListTile(
-                                title: const Text('1.75x'),
-                                trailing: selectedSpeed == 1.75
-                                    ? const Icon(Icons.check)
-                                    : null,
-                                onTap: () {
-                                  print("1.75x speed selected");
-                                  setState(() {
-                                    selectedSpeed = 1.75;
-                                  });
-                                  _vlcPlayerController.setPlaybackSpeed(1.75);
-                                  Navigator.pop(context);
-                                },
-                              ),
-                              ListTile(
-                                title: const Text('2.0x'),
-                                trailing: selectedSpeed == 2.0
-                                    ? const Icon(Icons.check)
-                                    : null,
-                                onTap: () {
-                                  print("2.0x speed selected");
-                                  setState(() {
-                                    selectedSpeed = 2.0;
-                                  });
-                                  _vlcPlayerController.setPlaybackSpeed(2.0);
-                                  Navigator.pop(context);
-                                },
-                              ),
-                            ],
                           ),
                         ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            );
+                      ]),
+                    )));
           },
         );
       },
