@@ -232,7 +232,7 @@ class _GroupedListScreenState extends State<GroupedListScreen> {
             'Sort by...',
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              color: Colors.grey,
+              color: Colors.black,
             ),
           ),
         ),
@@ -390,6 +390,10 @@ class _GroupedListScreenState extends State<GroupedListScreen> {
                                         (video) => video['file'].path as String)
                                     .toList(),
                                 initialIndex: index,
+                                title: filteredVideos[index]['file']
+                                    .path
+                                    .split('/')
+                                    .last,
                               ),
                             ),
                           );
@@ -425,6 +429,10 @@ class _GroupedListScreenState extends State<GroupedListScreen> {
                                           video['file'].path as String)
                                       .toList(),
                                   initialIndex: index,
+                                  title: filteredVideos[index]['file']
+                                      .path
+                                      .split('/')
+                                      .last,
                                 ),
                               ),
                             );
@@ -443,7 +451,8 @@ class _GroupedListScreenState extends State<GroupedListScreen> {
                                         width: double.infinity,
                                         height: double.infinity,
                                       )
-                                    : const Icon(Icons.videocam, color: Colors.grey),
+                                    : const Icon(Icons.videocam,
+                                        color: Colors.grey),
                                 Positioned(
                                   bottom: 0,
                                   left: 0,
@@ -461,7 +470,7 @@ class _GroupedListScreenState extends State<GroupedListScreen> {
                                               .split('/')
                                               .last,
                                           style: const TextStyle(
-                                            color: Colors.white,
+                                            color: Colors.black,
                                             fontSize: 12,
                                           ),
                                           overflow: TextOverflow.ellipsis,
@@ -470,7 +479,7 @@ class _GroupedListScreenState extends State<GroupedListScreen> {
                                         Text(
                                           '${filteredVideos[index]['duration']} • ${filteredVideos[index]['resolution']}',
                                           style: const TextStyle(
-                                            color: Colors.white,
+                                            color: Colors.black,
                                             fontSize: 10,
                                           ),
                                         ),

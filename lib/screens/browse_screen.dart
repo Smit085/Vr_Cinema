@@ -4,8 +4,9 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import '../services/video_manager.dart';
+import '../utils/AppColors.dart';
 import '../utils/video_utils.dart';
-import 'video_player_screen.dart';
+import 'Video_player_screen.dart';
 
 class BrowseScreen extends StatefulWidget {
   const BrowseScreen({Key? key}) : super(key: key);
@@ -185,6 +186,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
           builder: (context) => VideoPlayerScreen(
             videoPaths: [url],
             initialIndex: 0,
+            title: url.split("/").last,
           ),
         ),
       );
@@ -214,7 +216,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
                     ),
                   ),
                 )
-              : const Text('Internal Storage'),
+              : const Text('Browse Videos'),
           leading: browsing
               ? IconButton(
                   icon: Icon(atHomeDirectory ? Icons.close : Icons.arrow_back),
@@ -247,12 +249,12 @@ class _BrowseScreenState extends State<BrowseScreen> {
                       children: [
                         const Text("Browser > ",
                             style:
-                                TextStyle(color: Colors.white70, fontSize: 14)),
+                                TextStyle(color: Colors.black87, fontSize: 14)),
                         Flexible(
                           child: Text(
                             getFullPath(),
                             style: const TextStyle(
-                                color: Colors.white70, fontSize: 14),
+                                color: Colors.black87, fontSize: 14),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -308,8 +310,8 @@ class _BrowseScreenState extends State<BrowseScreen> {
                                 String duration = data?[1] as String? ?? '';
                                 return ListTile(
                                   leading: isDirectory
-                                      ? const Icon(Icons.folder,
-                                          color: Colors.blue, size: 40)
+                                      ? Icon(Icons.folder,
+                                          color: AppColors.primaryColor, size: 40)
                                       : thumbnail != null
                                           ? Image.memory(thumbnail,
                                               width: 40,
@@ -344,7 +346,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
                                                 videoPaths: filteredVideos
                                                     .map((video) => video.path)
                                                     .toList(),
-                                                initialIndex: initialIndex,
+                                                initialIndex: initialIndex, title: fileName,
                                               ),
                                             ),
                                           );
@@ -363,7 +365,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
                           style: TextStyle(color: Colors.grey, fontSize: 18)),
                     ),
                     ListTile(
-                      leading: const Icon(Icons.sd_storage, color: Colors.blue),
+                      leading: Icon(Icons.sd_storage, color: AppColors.primaryColor),
                       title: const Text("Internal memory"),
                       onTap: loadInternalStorage,
                     ),
@@ -378,12 +380,14 @@ class _BrowseScreenState extends State<BrowseScreen> {
                       padding: EdgeInsets.symmetric(horizontal: 18.0),
                       child: TextField(
                         controller: networkController,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           hintText: "Enter video URL",
-                          prefixIcon: Icon(Icons.link),
-                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.link, color: AppColors.primaryColor),
+                          border: const OutlineInputBorder(),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: AppColors.primaryColor, width: 2),
+                          ),
                         ),
-                        keyboardType: TextInputType.url,
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -411,7 +415,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
                           style: ElevatedButton.styleFrom(
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(5)),
-                            backgroundColor: Colors.blue,
+                            backgroundColor: AppColors.primaryColor,
                           ),
                         ))
                   ],

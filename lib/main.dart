@@ -4,10 +4,12 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:vr_cinema/screens/browse_screen.dart';
 import 'package:vr_cinema/screens/setting_screen.dart';
 import 'package:vr_cinema/screens/video_list_screen.dart';
+import 'package:vr_cinema/utils/AppColors.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await requestManageStoragePermission();
+  await AppColors.loadPrimaryColor();
   runApp(const MyApp());
 }
 
@@ -18,17 +20,55 @@ Future<void> requestManageStoragePermission() async {
 }
 
 class MyApp extends StatelessWidget {
+  static final ValueNotifier<Color> themeColorNotifier =
+      ValueNotifier<Color>(AppColors.primaryColor);
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
   const MyApp({super.key});
+
+  static void updateThemeColor(Color newColor) {
+    themeColorNotifier.value = newColor;
+    AppColors.savePrimaryColor(newColor);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData.light(),
-      darkTheme: ThemeData.dark(),
-      themeMode: ThemeMode.system,
-      home: const SplashScreen(), // Start with SplashScreen
-    );
+    return ValueListenableBuilder<Color>(
+        valueListenable: themeColorNotifier,
+        builder: (context, themeColor, child) {
+          return MaterialApp(
+            key: ValueKey(themeColor),
+            navigatorKey: navigatorKey,
+            debugShowCheckedModeBanner: false,
+            theme: ThemeData(
+              popupMenuTheme: PopupMenuThemeData(color: AppColors.primaryColor),
+              scaffoldBackgroundColor: AppColors.primaryColor.withOpacity(0.15),
+              appBarTheme: AppBarTheme(
+                color: AppColors.primaryColor,
+              ),
+              dropdownMenuTheme: DropdownMenuThemeData(
+                  menuStyle: MenuStyle(
+                      backgroundColor:
+                          WidgetStateProperty.all(AppColors.primaryColor))),
+              checkboxTheme: CheckboxThemeData(
+                fillColor: MaterialStateProperty.resolveWith((states) {
+                  if (states.contains(MaterialState.selected)) {
+                    return AppColors.primaryColor;
+
+                  }
+                  return Colors.transparent;
+                }),
+                checkColor: WidgetStateProperty.all(Colors.white),
+                overlayColor:
+                    WidgetStateProperty.all(Colors.blueAccent.withOpacity(0.5)),
+                side: const BorderSide(color: Colors.black45, width: 2),
+              ),
+            ),
+            darkTheme: ThemeData.dark(),
+            themeMode: ThemeMode.system,
+            home: const SplashScreen(), // Start with SplashScreen
+          );
+        });
   }
 }
 
@@ -55,11 +95,10 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Adaptive background color
       body: Center(
         child: Image.asset(
           'assets/logo_with_text.png',
-          width: 350, // Adjust logo size
+          width: 350,
           height: 350,
         ),
       ),
@@ -86,6 +125,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       body: IndexedStack(
         index: _selectedIndex,
         children: _widgetOptions,
@@ -109,10 +149,11 @@ class _MainScreenState extends State<MainScreen> {
     return Expanded(
       child: InkResponse(
         onTap: () => _onItemTapped(index),
-        splashColor: Colors.blue.withOpacity(0.3),
+        splashColor: AppColors.primaryColor.withOpacity(0.2),
         highlightColor: Colors.transparent,
         radius: 30.0,
         child: Container(
+          color: AppColors.primaryColor.withOpacity(0.25),
           height: 55,
           alignment: Alignment.center,
           child: Column(
@@ -121,12 +162,16 @@ class _MainScreenState extends State<MainScreen> {
               Icon(
                 icon,
                 size: 24.0,
-                color: _selectedIndex == index ? Colors.blue : Colors.grey,
+                color: _selectedIndex == index
+                    ? AppColors.primaryColor
+                    : Colors.grey,
               ),
               Text(
                 text,
                 style: TextStyle(
-                  color: _selectedIndex == index ? Colors.blue : Colors.grey,
+                  color: _selectedIndex == index
+                      ? AppColors.primaryColor
+                      : Colors.grey,
                   fontSize: 12,
                 ),
               ),

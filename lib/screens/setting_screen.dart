@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:vr_cinema/utils/AppColors.dart';
+
+import '../main.dart';
 
 class SettingScreen extends StatefulWidget {
   const SettingScreen({super.key});
@@ -9,7 +12,7 @@ class SettingScreen extends StatefulWidget {
 }
 
 class _SettingScreenState extends State<SettingScreen> {
-  Color _themeColor = Colors.blue;
+  Color _themeColor = AppColors.skyBlue;
   bool isListView = true;
   bool autoScanVideos = true;
   String dayNightMode = 'system';
@@ -68,15 +71,15 @@ class _SettingScreenState extends State<SettingScreen> {
   Color _getColorFromString(String colorString) {
     switch (colorString) {
       case 'blue':
-        return Colors.blue;
+        return AppColors.skyBlue;
       case 'green':
-        return Colors.green;
-      case 'red':
-        return Colors.red;
+        return AppColors.limeGreen;
+      case 'orange':
+        return AppColors.sunsetOrange;
       case 'purple':
-        return Colors.purple;
+        return AppColors.glossyGrape;
       default:
-        return Colors.blue;
+        return AppColors.skyBlue;
     }
   }
 
@@ -85,6 +88,9 @@ class _SettingScreenState extends State<SettingScreen> {
       _themeColor = color;
     });
     _saveSetting('themeColor', color.value);
+    AppColors.primaryColor = color;
+    AppColors.updateColors(color);
+    MyApp.updateThemeColor(color);
   }
 
   Future<void> _saveSetting<T>(String key, T value) async {
@@ -104,7 +110,7 @@ class _SettingScreenState extends State<SettingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('VR Cinema Settings'),
+        title: const Text('App Settings'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(12.0),
@@ -351,19 +357,26 @@ class _SettingScreenState extends State<SettingScreen> {
   }
 
   Widget _buildSettingCategory(String title, List<Widget> children) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      elevation: 2,
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          title:
-              Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-          children: children,
-          collapsedBackgroundColor: Colors.transparent,
-          backgroundColor: Colors.transparent,
+    return ValueListenableBuilder<Color>(
+        valueListenable: AppColors.secondaryColorNotifier,
+        builder: (context, secondaryColor, child)
+    {
+      return Card(
+        color: AppColors.secondryColor,
+        margin: const EdgeInsets.symmetric(vertical: 8.0),
+        elevation: 2,
+        child: Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            title:
+            Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+            children: children,
+            collapsedBackgroundColor: Colors.transparent,
+            backgroundColor: Colors.transparent,
+          ),
         ),
-      ),
+      );
+    }
     );
   }
 
@@ -401,9 +414,9 @@ class _SettingScreenState extends State<SettingScreen> {
           trackHeight: 1.5,
           thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
           overlayShape: const RoundSliderOverlayShape(overlayRadius: 16.0),
-          activeTrackColor: Colors.redAccent,
+          activeTrackColor: AppColors.primaryColor,
           inactiveTrackColor: Colors.grey,
-          thumbColor: Colors.red,
+          thumbColor: AppColors.primaryColor,
           valueIndicatorColor: Colors.blue, // Background color of the label
           valueIndicatorTextStyle: const TextStyle(color: Colors.white),
         ),
@@ -439,10 +452,10 @@ class _SettingScreenState extends State<SettingScreen> {
           trackHeight: 1.5,
           thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
           overlayShape: const RoundSliderOverlayShape(overlayRadius: 16.0),
-          activeTrackColor: Colors.redAccent,
+          activeTrackColor: AppColors.primaryColor,
           inactiveTrackColor: Colors.grey,
-          thumbColor: Colors.red,
-          valueIndicatorColor: Colors.blue, // Background color of the label
+          thumbColor: AppColors.primaryColor,
+          valueIndicatorColor: AppColors.primaryColor,
           valueIndicatorTextStyle: const TextStyle(color: Colors.white),
         ),
         child: Slider(
@@ -516,8 +529,8 @@ class _SettingScreenState extends State<SettingScreen> {
               ),
               TextButton(
                 onPressed: onReset,
-                child:
-                    const Text("Reset", style: TextStyle(color: Colors.blue)),
+                child: Text("Reset",
+                    style: TextStyle(color: AppColors.primaryColor)),
               ),
             ],
           ),
@@ -528,17 +541,18 @@ class _SettingScreenState extends State<SettingScreen> {
 
   Widget _buildColorSelector() {
     final List<Color> colors = [
-      Colors.blue,
-      Colors.red,
-      Colors.green,
-      Colors.purple
+      AppColors.skyBlue,
+      AppColors.sunsetOrange,
+      AppColors.limeGreen,
+      AppColors.glossyGrape
     ];
     return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 18),
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text(
-              "Select Theme Color",
+              "Select App Theme",
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             Row(
