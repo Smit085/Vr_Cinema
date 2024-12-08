@@ -42,9 +42,9 @@ VR Cinema App enables users to watch videos stored on their devices in an immers
 ```  
 📂 VR_Cinema_App
 ├── 📁 android
-    ├── 📁 unityLibrary        # Unity scene and scripts
-├── 📁 lib        # Flutter project files
-├── 📄 README.md          # Project documentation
+    ├── 📁 unityLibrary    # Unity scene and scripts
+├── 📁 lib                 # Flutter project files
+├── 📄 README.md           # Project documentation
 ```  
 
 ---
