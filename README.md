@@ -96,7 +96,7 @@ For feature requests or bug reports, open an issue [here](https://github.com/Smi
 
 ---
 
-> **Crafted with ❤️ by [SAP](https://yourwebsite.com)**  
+> **Crafted with ❤️ by [SAP](https://github.com/Smit085)**
 
 --- 
 
