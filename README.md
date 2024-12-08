@@ -31,9 +31,9 @@ VR Cinema App enables users to watch videos stored on their devices in an immers
 
 | Feature        | Screenshot                                  |  
 |----------------|--------------------------------------------|  
-| VR Mode        | ![Video List Screen](https://github.com/user-attachments/assets/3118af36-af73-4a67-a0f6-3d16b6b7213d)  |  
-| Scene Selection| *Add a placeholder or link to image here*  |  
-| Subtitles      | *Add a placeholder or link to image here*  |  
+| VR Mode        | ![Video List Screen](https://github.com/user-attachments/assets/3118af36-af73-4a67-a0f6-3d16b6b7213d)          |  
+| Theater Model  | ![Theater Model](https://github.com/user-attachments/assets/a8ac13ff-fe35-443d-8cac-9a1781d8b284)              |  
+| Living Room Model      | ![Living Room Mode](https://github.com/user-attachments/assets/c5fc4dc6-72a6-4b03-b484-fba85a9a4953)   |  
 
 ---
 
