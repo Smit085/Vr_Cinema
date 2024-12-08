@@ -40,11 +40,11 @@ VR Cinema App enables users to watch videos stored on their devices in an immers
 ## 📂 Project Structure  
 
 ```  
-📂 VR_Cinema_App  
-├── 📁 Flutter_App        # Flutter project files  
-├── 📁 Unity_Project      # Unity scene and scripts  
-├── 📄 README.md          # Project documentation  
-└── 📜 LICENSE            # License details  
+📂 VR_Cinema_App
+├── 📁 android
+    ├── 📁 unityLibrary        # Unity scene and scripts
+├── 📁 lib        # Flutter project files
+├── 📄 README.md          # Project documentation
 ```  
 
 ---
@@ -58,7 +58,7 @@ VR Cinema App enables users to watch videos stored on their devices in an immers
 ### Steps  
 1. **Clone the Repository**:  
    ```bash  
-   git clone https://github.com/username/vr-cinema-app.git  
+   git clone https://github.com/Smit085/Vr_Cinema.git  
    cd vr-cinema-app  
    ```  
 
@@ -76,8 +76,8 @@ VR Cinema App enables users to watch videos stored on their devices in an immers
 ## 🎯 Roadmap  
 
 - [ ] Add more virtual environments.  
-- [ ] Support for online video streaming.  
-- [ ] Enhanced VR navigation controls.  
+- [ ] Enhanced VR Player controls.
+- [ ] Optimise the App.
 
 ---
 
@@ -87,20 +87,16 @@ Contributions are welcome! Please fork the repository, create a feature branch, 
 
 ---
 
-## 📜 License  
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.  
 
 ---
 
 ## 💬 Feedback  
 
-For feature requests or bug reports, open an issue [here](https://github.com/username/vr-cinema-app/issues).  
+For feature requests or bug reports, open an issue [here](https://github.com/Smit085/Vr_Cinema/issues).  
 
 ---
 
-> **Crafted with ❤️ by [Your Name/Team Name](https://yourwebsite.com)**  
+> **Crafted with ❤️ by [SAP](https://yourwebsite.com)**  
 
 --- 
 
-Replace placeholders with actual images, links, and team details for a more complete README. Let me know if you'd like adjustments!
