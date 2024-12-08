@@ -1,5 +1,3 @@
-Here’s a modern and professional README file tailored for your VR Cinema app:
-
 ---
 
 # 🎥 VR Cinema App  
