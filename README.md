@@ -1,4 +1,4 @@
-
+![image](https://github.com/user-attachments/assets/1f9cb486-18d9-4788-965c-bd5b4d62bfb2)
 ---
 
 # 🎥 VR Cinema App  
@@ -31,7 +31,8 @@ VR Cinema App enables users to watch videos stored on their devices in an immers
 
 | Feature        | Screenshot                                  |  
 |----------------|--------------------------------------------|  
-| VR Mode        | *Add a placeholder or link to image here*  |  
+| VR Mode        | *![image](https://github.com/user-attachments/assets/3118af36-af73-4a67-a0f6-3d16b6b7213d)
+*  |  
 | Scene Selection| *Add a placeholder or link to image here*  |  
 | Subtitles      | *Add a placeholder or link to image here*  |  
 
