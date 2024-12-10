@@ -87,9 +87,6 @@ Contributions are welcome! Please fork the repository, create a feature branch, 
 
 ---
 
-
----
-
 ## 💬 Feedback  
 
 For feature requests or bug reports, open an issue [here](https://github.com/Smit085/Vr_Cinema/issues).  
@@ -99,4 +96,3 @@ For feature requests or bug reports, open an issue [here](https://github.com/Smi
 > **Crafted with ❤️ by [SAP](https://github.com/Smit085)**
 
 --- 
-
